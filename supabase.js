@@ -6,7 +6,7 @@
 // ============================================================
 
 const SUPABASE_URL = 'https://jwyayfkssyagvnablttg.supabase.co/rest/v1/';
-const SUPABASE_ANON_KEY = 'VOTRE_ANON_KEY';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3eWF5Zmtzc3lhZ3ZuYWJsdHRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5MjI2ODAsImV4cCI6MjA5NzQ5ODY4MH0.Agcv5wdm2WWZXDlnOpB7nH1_pjmn-MTzp_35InEjuOw';
 
 // Initialisation du client Supabase (SDK v2 via CDN)
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
