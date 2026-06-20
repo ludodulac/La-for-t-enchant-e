@@ -5,7 +5,7 @@
 // (Paramètres du projet > API dans le tableau de bord Supabase)
 // ============================================================
 
-const SUPABASE_URL = 'https://VOTRE_PROJECT_ID.supabase.co';
+const SUPABASE_URL = 'https://jwyayfkssyagvnablttg.supabase.co/rest/v1/';
 const SUPABASE_ANON_KEY = 'VOTRE_ANON_KEY';
 
 // Initialisation du client Supabase (SDK v2 via CDN)
