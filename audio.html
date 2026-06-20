@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Écouter — La Forêt Enchantée</title>
+  <meta name="description" content="Écouter une histoire dans la Forêt Enchantée.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
+</head>
+<body>
+
+  <!-- ── En-tête minimal ───────────────────────────────────── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="site-logo" title="Accueil">
+        <span>🌲</span> La Forêt Enchantée
+      </a>
+    </div>
+  </header>
+
+  <!-- ── Fiche audio ────────────────────────────────────────── -->
+  <main class="audio-page" id="player-container">
+
+    <!-- Fil d'Ariane -->
+    <div class="breadcrumb" id="breadcrumb">
+      <span class="bc-item bc-link" onclick="goHome()">🏠 Accueil</span>
+      <span class="bc-sep">›</span>
+      <span class="bc-item active">Chargement…</span>
+    </div>
+
+    <!-- Bouton retour -->
+    <button class="btn-back" onclick="goBack()">← Retour</button>
+
+    <!-- Couverture + infos -->
+    <div class="audio-hero">
+      <div class="audio-hero-cover" id="audio-cover"></div>
+      <div class="audio-hero-info">
+        <div class="audio-page-cat" id="audio-cat"></div>
+        <h1 class="audio-page-title" id="audio-title">Chargement…</h1>
+        <p class="audio-page-desc" id="audio-desc"></p>
+      </div>
+    </div>
+
+    <!-- Lecteur (construit par audio.js) -->
+    <div id="player-zone"></div>
+
+  </main>
+
+  <!-- ── Pied de page ──────────────────────────────────────── -->
+  <footer class="site-footer">
+    <p>🌲 La Forêt Enchantée — Histoires et contes pour les enfants</p>
+  </footer>
+
+  <!-- ── Scripts ───────────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/audio.js"></script>
+
+</body>
+</html>

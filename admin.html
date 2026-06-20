@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administration — La Forêt Enchantée</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙</text></svg>">
+
+  <style>
+    /* Styles supplémentaires spécifiques à l'admin */
+    .upload-hint {
+      font-size: 0.78rem;
+      color: var(--pale-mist);
+      opacity: 0.55;
+      margin-top: 0.25rem;
+    }
+    .add-audio-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 640px) { .add-audio-grid { grid-template-columns: 1fr; } }
+    .form-group input[type="file"] {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .stat-row {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-soft);
+      border-radius: 14px;
+      padding: 1.2rem 1.5rem;
+      flex: 1; min-width: 130px;
+      text-align: center;
+    }
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      color: var(--glow-gold);
+      display: block;
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--pale-mist);
+      opacity: 0.6;
+    }
+    .visit-link {
+      font-size: 0.85rem;
+      color: var(--pale-mist);
+      opacity: 0.55;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── En-tête admin ─────────────────────────────────────── -->
+  <header class="admin-header">
+    <div class="admin-header-inner">
+      <div class="admin-title">🌲 Administration — La Forêt Enchantée</div>
+      <div style="display:flex;align-items:center;gap:1rem">
+        <a href="index.html" class="visit-link">← Voir le site</a>
+        <button class="btn-logout" id="btn-logout">Se déconnecter</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="admin-wrap">
+
+    <!-- ── Statistiques ──────────────────────────────────────── -->
+    <div class="stat-row" id="stat-row">
+      <div class="stat-card">
+        <span class="stat-num" id="stat-audios">—</span>
+        <span class="stat-label">Histoires</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="stat-cats">—</span>
+        <span class="stat-label">Catégories</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="stat-subs">—</span>
+        <span class="stat-label">Sous-catégories</span>
+      </div>
+    </div>
+
+    <!-- ── Onglets ────────────────────────────────────────────── -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-audios">🎧 Audios</button>
+      <button class="tab-btn" data-tab="tab-cats">📂 Catégories</button>
+      <button class="tab-btn" data-tab="tab-subs">📁 Sous-catégories</button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- ONGLET AUDIOS                                         -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="tab-panel active" id="tab-audios">
+
+      <!-- Ajouter un audio -->
+      <div class="admin-section">
+        <h3>➕ Ajouter un audio</h3>
+        <form id="form-add-audio" novalidate>
+
+          <div class="add-audio-grid">
+            <div class="form-group">
+              <label for="audio-title-in">Titre *</label>
+              <input type="text" id="audio-title-in" placeholder="Ex : Le Petit Chaperon Rouge" required>
+            </div>
+            <div class="form-group">
+              <label for="audio-cat">Catégorie</label>
+              <select id="audio-cat">
+                <option value="">— Sélectionner —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="audio-sub">Sous-catégorie</label>
+              <select id="audio-sub">
+                <option value="">— Aucune —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="audio-img">Image de couverture</label>
+              <input type="file" id="audio-img" accept="image/*">
+              <div class="upload-hint">JPG, PNG, WebP · recommandé : 600×600 px</div>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="audio-desc-in">Description</label>
+              <textarea id="audio-desc-in" placeholder="Courte description de l'histoire…"></textarea>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="audio-file">Fichier audio *</label>
+              <input type="file" id="audio-file" accept="audio/*" required>
+              <div class="upload-hint">MP3, OGG, AAC · la durée sera détectée automatiquement</div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary" id="btn-add-audio" style="max-width:260px">
+            Ajouter l'audio
+          </button>
+
+        </form>
+      </div>
+
+      <!-- Liste des audios -->
+      <div class="admin-section">
+        <h3>📋 Audios existants</h3>
+        <div id="audio-list-admin"></div>
+      </div>
+
+      <!-- Panneau modification audio -->
+      <div id="edit-panel">
+        <h4>✏️ Modifier l'audio</h4>
+        <input type="hidden" id="edit-audio-id">
+        <form id="form-edit-audio" novalidate>
+          <div class="edit-grid">
+            <div class="form-group">
+              <label for="edit-audio-title">Titre *</label>
+              <input type="text" id="edit-audio-title" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-audio-cat">Catégorie</label>
+              <select id="edit-audio-cat"></select>
+            </div>
+            <div class="form-group">
+              <label for="edit-audio-sub">Sous-catégorie</label>
+              <select id="edit-audio-sub"></select>
+            </div>
+            <div class="form-group">
+              <label for="edit-audio-img">Nouvelle image (optionnel)</label>
+              <input type="file" id="edit-audio-img" accept="image/*">
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="edit-audio-desc">Description</label>
+              <textarea id="edit-audio-desc"></textarea>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label for="edit-audio-file">Nouveau fichier audio (optionnel)</label>
+              <input type="file" id="edit-audio-file" accept="audio/*">
+            </div>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <button type="submit" class="btn-primary" style="max-width:200px">Enregistrer</button>
+            <button type="button" class="btn-cancel" id="btn-cancel-edit">Annuler</button>
+          </div>
+        </form>
+      </div>
+
+    </div><!-- /tab-audios -->
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- ONGLET CATÉGORIES                                     -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-cats">
+
+      <div class="admin-section">
+        <h3>➕ Ajouter une catégorie</h3>
+        <form id="form-add-cat" class="inline-form" novalidate>
+          <input type="text" id="new-cat-name" placeholder="Nom de la catégorie" required>
+          <button type="submit" class="btn-inline">Ajouter</button>
+        </form>
+      </div>
+
+      <div class="admin-section">
+        <h3>📋 Catégories existantes</h3>
+        <div id="cat-list"></div>
+      </div>
+
+    </div><!-- /tab-cats -->
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- ONGLET SOUS-CATÉGORIES                               -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-subs">
+
+      <div class="admin-section">
+        <h3>➕ Ajouter une sous-catégorie</h3>
+        <form id="form-add-sub" class="inline-form" novalidate>
+          <select id="new-sub-cat">
+            <option value="">— Catégorie parente —</option>
+          </select>
+          <input type="text" id="new-sub-name" placeholder="Nom de la sous-catégorie" required>
+          <button type="submit" class="btn-inline">Ajouter</button>
+        </form>
+      </div>
+
+      <div class="admin-section">
+        <h3>📋 Sous-catégories existantes</h3>
+        <div id="sub-list-admin"></div>
+      </div>
+
+    </div><!-- /tab-subs -->
+
+  </div><!-- /admin-wrap -->
+
+  <!-- ── Toast notification ────────────────────────────────── -->
+  <div id="notif"></div>
+
+  <!-- ── Scripts ───────────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+
+  <script>
+    // Mise à jour des stats après chargement
+    const _origRenderAll = renderAll;
+    renderAll = function() {
+      _origRenderAll();
+      document.getElementById('stat-audios').textContent = audios.length;
+      document.getElementById('stat-cats').textContent   = categories.length;
+      document.getElementById('stat-subs').textContent   = subcategories.length;
+    };
+  </script>
+
+</body>
+</html>
