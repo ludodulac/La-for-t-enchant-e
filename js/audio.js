@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!id) { goBack(); return; }
 
-  const { data: audio, error } = await supabase
+  const { data: audio, error } = await dbClient
     .from('audios')
     .select('*, categories(name), subcategories(name)')
     .eq('id', id)
