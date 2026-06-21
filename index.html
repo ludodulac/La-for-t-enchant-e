@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Forêt Enchantée — Bibliothèque audio jeunesse</title>
+  <meta name="description" content="Découvre des histoires, contes et comptines dans la Forêt Enchantée.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/blog.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="site-logo" onclick="renderHome()" title="Accueil">
+        🌲 La Forêt Enchantée
+      </div>
+      <div class="search-wrap">
+        <input
+          type="search"
+          id="search-input"
+          placeholder="Chercher une histoire…"
+          autocomplete="off"
+          aria-label="Rechercher une histoire"
+        >
+      </div>
+      <a href="blog.html" class="nav-link" style="flex-shrink:0">📖 Blog</a>
+      <a href="login.html" class="header-admin-link" title="Espace administrateur">⚙</a>
+    </div>
+  </header>
+
+  <section class="hero" id="hero-section">
+    <h1 class="hero-title">🌿 La Forêt Enchantée</h1>
+  </section>
+
+  <main class="main-wrap">
+    <div id="main-content"></div>
+  </main>
+
+  <footer class="site-footer">
+    <p>🌲 La Forêt Enchantée — Histoires et contes pour les enfants</p>
+    <p style="margin-top:0.75rem">
+      <a href="login.html" style="font-size:0.75rem;opacity:0.25;color:inherit;text-decoration:none">⚙ Admin</a>
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    const _origRenderHome = renderHome;
+    renderHome = function() {
+      document.getElementById('hero-section').style.display = '';
+      _origRenderHome();
+    };
+
+    const _origOpenCat = openCategory;
+    openCategory = function(cat) {
+      document.getElementById('hero-section').style.display = 'none';
+      _origOpenCat(cat);
+    };
+
+    const _origRenderSearch = renderSearch;
+    renderSearch = function(q) {
+      document.getElementById('hero-section').style.display = 'none';
+      _origRenderSearch(q);
+    };
+  </script>
+</body>
+</html>
