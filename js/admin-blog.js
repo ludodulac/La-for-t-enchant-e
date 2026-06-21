@@ -1,5 +1,5 @@
 // ============================================================
-// admin-blog.js — Gestion du blog dans l'administration
+// admin-blog.js — Gestion du blog avec upload images inline
 // ============================================================
 
 let articles   = [];
@@ -7,43 +7,70 @@ let quillNew   = null;
 let quillEdit  = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Init éditeurs Quill
-  quillNew = new Quill('#quill-editor', {
-    theme: 'snow',
-    placeholder: 'Rédigez votre article ici…',
-    modules: {
-      toolbar: [
-        [{ header: [2, 3, false] }],
-        ['bold', 'italic', 'underline'],
-        [{ list: 'ordered' }, { list: 'bullet' }],
-        ['blockquote', 'link'],
-        ['clean']
-      ]
-    }
-  });
-
-  quillEdit = new Quill('#quill-editor-edit', {
-    theme: 'snow',
-    modules: {
-      toolbar: [
-        [{ header: [2, 3, false] }],
-        ['bold', 'italic', 'underline'],
-        [{ list: 'ordered' }, { list: 'bullet' }],
-        ['blockquote', 'link'],
-        ['clean']
-      ]
-    }
-  });
-
+  quillNew  = initQuill('#quill-editor');
+  quillEdit = initQuill('#quill-editor-edit');
   loadArticles();
   setupBlogForms();
 });
+
+// ── Initialisation Quill avec upload image ───────────────────
+function initQuill(selector) {
+  const quill = new Quill(selector, {
+    theme: 'snow',
+    placeholder: 'Rédigez votre article ici…',
+    modules: {
+      toolbar: {
+        container: [
+          [{ header: [2, 3, false] }],
+          ['bold', 'italic', 'underline'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['blockquote', 'link', 'image'],
+          ['clean']
+        ],
+        handlers: {
+          image: () => handleImageInsert(quill)
+        }
+      }
+    }
+  });
+  return quill;
+}
+
+// ── Handler upload image inline ──────────────────────────────
+function handleImageInsert(quill) {
+  const input = document.createElement('input');
+  input.type   = 'file';
+  input.accept = 'image/*';
+  input.click();
+
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    showNotif('Upload image en cours…', 'success');
+
+    const ext  = file.name.split('.').pop();
+    const path = `inline/${Date.now()}.${ext}`;
+
+    const { error } = await dbClient.storage.from('blog-images').upload(path, file);
+    if (error) { showNotif('Erreur upload : ' + error.message, 'error'); return; }
+
+    const url = getPublicUrl('blog-images', path);
+
+    // Insérer l'image à la position du curseur
+    const range = quill.getSelection(true);
+    quill.insertEmbed(range.index, 'image', url);
+    quill.setSelection(range.index + 1);
+
+    showNotif('Image insérée ✓');
+  });
+}
 
 // ── Chargement articles ──────────────────────────────────────
 async function loadArticles() {
   const { data, error } = await dbClient
     .from('articles')
-    .select('id, title, category, published, published_at, created_at')
+    .select('id, title, category, published, published_at, created_at, cover_path')
     .order('created_at', { ascending: false });
 
   articles = data ?? [];
@@ -56,7 +83,7 @@ function updateArticleStat() {
   if (el) el.textContent = articles.length;
 }
 
-// ── Liste articles en admin ──────────────────────────────────
+// ── Liste articles admin ─────────────────────────────────────
 function renderArticleList() {
   const list = document.getElementById('article-list-admin');
   if (!list) return;
@@ -68,7 +95,7 @@ function renderArticleList() {
   }
 
   articles.forEach(art => {
-    const row = document.createElement('div');
+    const row  = document.createElement('div');
     row.className = 'blog-admin-row';
     const date = art.published_at
       ? new Date(art.published_at).toLocaleDateString('fr-FR')
@@ -89,9 +116,9 @@ function renderArticleList() {
   });
 }
 
-// ── Formulaires blog ─────────────────────────────────────────
+// ── Formulaires ──────────────────────────────────────────────
 function setupBlogForms() {
-  // Ajouter article
+
   document.getElementById('form-add-article')?.addEventListener('submit', async e => {
     e.preventDefault();
     const btn = document.getElementById('btn-add-article');
@@ -109,8 +136,8 @@ function setupBlogForms() {
 
       let coverPath = null;
       if (coverFile) {
-        const ext  = coverFile.name.split('.').pop();
-        coverPath  = `${Date.now()}-${slugify(title)}.${ext}`;
+        const ext = coverFile.name.split('.').pop();
+        coverPath = `covers/${Date.now()}-${slugify(title)}.${ext}`;
         const { error } = await dbClient.storage.from('blog-images').upload(coverPath, coverFile);
         if (error) throw error;
       }
@@ -135,11 +162,11 @@ function setupBlogForms() {
     } catch(err) {
       showNotif('Erreur : ' + (err.message ?? err), 'error');
     } finally {
-      btn.disabled = false; btn.textContent = "Enregistrer l'article";
+      btn.disabled = false;
+      btn.textContent = "Enregistrer l'article";
     }
   });
 
-  // Modifier article
   document.getElementById('form-edit-article')?.addEventListener('submit', async e => {
     e.preventDefault();
     const id        = parseInt(document.getElementById('edit-article-id').value, 10);
@@ -159,7 +186,7 @@ function setupBlogForms() {
       if (coverFile) {
         if (coverPath) await dbClient.storage.from('blog-images').remove([coverPath]);
         const ext = coverFile.name.split('.').pop();
-        coverPath = `${Date.now()}-${slugify(title)}.${ext}`;
+        coverPath = `covers/${Date.now()}-${slugify(title)}.${ext}`;
         const { error } = await dbClient.storage.from('blog-images').upload(coverPath, coverFile);
         if (error) throw error;
       }
@@ -192,15 +219,14 @@ function setupBlogForms() {
 
 // ── Ouvrir modification ──────────────────────────────────────
 async function openEditArticle(id) {
-  // Charger le contenu complet
   const { data: art } = await dbClient.from('articles').select('*').eq('id', id).single();
   if (!art) return;
 
   document.getElementById('edit-article-panel').style.display = 'block';
-  document.getElementById('edit-article-id').value        = art.id;
-  document.getElementById('edit-article-title').value     = art.title;
-  document.getElementById('edit-article-excerpt').value   = art.excerpt ?? '';
-  document.getElementById('edit-article-category').value  = art.category ?? '';
+  document.getElementById('edit-article-id').value         = art.id;
+  document.getElementById('edit-article-title').value      = art.title;
+  document.getElementById('edit-article-excerpt').value    = art.excerpt ?? '';
+  document.getElementById('edit-article-category').value   = art.category ?? '';
   document.getElementById('edit-article-published').checked = art.published ?? false;
   quillEdit.root.innerHTML = art.content ?? '';
 
