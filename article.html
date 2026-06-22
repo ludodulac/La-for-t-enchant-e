@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Article — La Forêt Enchantée</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;400i&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/blog.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+
+  <style>
+    /* Styles d'impression / PDF — fond blanc, texte noir */
+    @media print {
+      body { background: #fff !important; color: #111 !important; }
+      .site-header, .btn-back, .breadcrumb, .site-footer,
+      .btn-pdf, #pdf-bar { display: none !important; }
+      .article-page { max-width: 100%; padding: 0; margin: 0; }
+      .article-cover { display: none; }
+      .article-title { color: #111 !important; text-shadow: none !important; font-size: 2rem; }
+      .article-date  { color: #555 !important; }
+      .blog-tag      { color: #333 !important; border-color: #ccc !important; background: #f5f5f5 !important; }
+      .article-body  { color: #222 !important; }
+      .article-body h2, .article-body h3 { color: #111 !important; }
+      .article-body blockquote { background: #f9f9f9 !important; border-color: #999 !important; }
+      .article-body a { color: #0066cc !important; }
+      .article-body iframe, .article-body .ql-video { display: none !important; }
+      .pdf-header { display: block !important; }
+    }
+
+    /* Barre PDF */
+    #pdf-bar {
+      background: rgba(245,200,66,0.12);
+      border-bottom: 1px solid rgba(245,200,66,0.3);
+      padding: 0.6rem 1rem;
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: linear-gradient(135deg, var(--glow-gold), var(--glow-gold-2));
+      border: none; border-radius: 10px;
+      color: var(--deep-forest);
+      padding: 8px 16px; font-size: 0.88rem; font-weight: 700;
+      font-family: var(--font-body); cursor: pointer;
+      transition: var(--t); min-height: 40px;
+    }
+    .btn-pdf:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(245,200,66,0.35); }
+
+    /* En-tête visible uniquement dans le PDF */
+    .pdf-header {
+      display: none;
+      font-family: Georgia, serif;
+      font-size: 0.85rem;
+      color: #888;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="index.html" class="site-logo">🌲 La Forêt Enchantée</a>
+      <nav class="header-nav">
+        <a href="index.html" class="nav-link">Histoires</a>
+        <a href="blog.html" class="nav-link active">Blog</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Barre PDF -->
+  <div id="pdf-bar">
+    <span style="font-size:0.82rem;color:var(--pale-mist);opacity:0.7">📄 Enregistrer cet article</span>
+    <button class="btn-pdf" onclick="downloadPDF()">⬇ Télécharger en PDF</button>
+  </div>
+
+  <main class="article-page" id="article-container">
+
+    <div class="breadcrumb">
+      <a href="index.html" class="bc-link">🏠 Accueil</a>
+      <span class="bc-sep">›</span>
+      <a href="blog.html" class="bc-link">Blog</a>
+      <span class="bc-sep">›</span>
+      <span class="bc-item active" id="article-bc-title">Article</span>
+    </div>
+
+    <button class="btn-back" onclick="history.back()">← Retour</button>
+
+    <!-- En-tête PDF uniquement -->
+    <div class="pdf-header" id="pdf-header">
+      La Forêt Enchantée — laforetenchantee.fr
+    </div>
+
+    <div id="article-content">
+      <p class="empty-msg">Chargement…</p>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>🌲 La Forêt Enchantée — Histoires et contes pour les enfants</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- html2pdf pour génération PDF propre -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/blog.js"></script>
+
+  <script>
+    function downloadPDF() {
+      const btn = document.querySelector('.btn-pdf');
+      btn.textContent = '⏳ Génération…';
+      btn.disabled = true;
+
+      // Titre de l'article pour le nom du fichier
+      const titre = document.getElementById('article-bc-title')?.textContent ?? 'article';
+      const nomFichier = titre
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .slice(0, 50);
+
+      // Cloner le contenu pour le PDF
+      const source = document.getElementById('article-content');
+      const clone  = source.cloneNode(true);
+
+      // Styles PDF inline — fond blanc, texte noir
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        font-family: Georgia, serif;
+        font-size: 13px;
+        line-height: 1.8;
+        color: #1a1a1a;
+        padding: 0 8px;
+        max-width: 680px;
+      `;
+
+      // En-tête PDF
+      const header = document.createElement('div');
+      header.style.cssText = 'font-size:11px;color:#888;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:20px;font-family:sans-serif;';
+      header.textContent = 'La Forêt Enchantée';
+      wrapper.appendChild(header);
+      wrapper.appendChild(clone);
+
+      // Appliquer styles au contenu cloné
+      wrapper.querySelectorAll('h1, h2, h3').forEach(el => {
+        el.style.color = '#1a1a1a';
+        el.style.fontFamily = 'Georgia, serif';
+        el.style.textShadow = 'none';
+      });
+      wrapper.querySelectorAll('p, li, span').forEach(el => {
+        el.style.color = '#2a2a2a';
+      });
+      wrapper.querySelectorAll('blockquote').forEach(el => {
+        el.style.cssText = 'border-left:3px solid #888;padding:6px 12px;background:#f9f9f9;color:#333;margin:12px 0;';
+      });
+      wrapper.querySelectorAll('a').forEach(el => {
+        el.style.color = '#0055aa';
+      });
+      // Cacher les vidéos dans le PDF
+      wrapper.querySelectorAll('iframe, .ql-video').forEach(el => {
+        const note = document.createElement('p');
+        note.style.cssText = 'color:#888;font-style:italic;font-size:11px;';
+        note.textContent = '[Vidéo disponible en ligne]';
+        el.replaceWith(note);
+      });
+      // Images — s'assurer qu'elles s'affichent
+      wrapper.querySelectorAll('img').forEach(el => {
+        el.style.maxWidth = '100%';
+        el.style.borderRadius = '4px';
+        el.style.margin = '10px 0';
+      });
+      // Tag catégorie
+      wrapper.querySelectorAll('.blog-tag').forEach(el => {
+        el.style.cssText = 'display:inline-block;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:4px;padding:2px 8px;font-size:10px;margin-bottom:8px;';
+      });
+
+      const options = {
+        margin:      [12, 14, 12, 14],
+        filename:    nomFichier + '.pdf',
+        image:       { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:   { mode: ['avoid-all', 'css'] },
+      };
+
+      html2pdf().set(options).from(wrapper).save().then(() => {
+        btn.textContent = '⬇ Télécharger en PDF';
+        btn.disabled = false;
+      });
+    }
+  </script>
+
+</body>
+</html>
