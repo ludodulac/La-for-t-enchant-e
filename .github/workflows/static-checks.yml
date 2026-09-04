@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Check JavaScript syntax
         shell: bash
         run: |
@@ -45,7 +45,7 @@ jobs:
           test -f supabase/migrations/20260904_unify_admin_permissions.sql
           test -f supabase/migrations/20260904_add_fk_indexes.sql
           test -f supabase/migrations/20260904_wikignose_pdf_sha256.sql
-          test -f supabase/migrations/20260904_consolidate_article_select_policies.sql
+          test -f supabase/migrations/20260904_optimize_article_select_policies.sql
       - name: Check public page contracts
         shell: bash
         run: |
