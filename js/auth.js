@@ -18,3 +18,34 @@ async function requireAuth() {
   if (!session) window.location.href = 'login.html';
   return session;
 }
+
+// Enhancement layer for the administration page only.
+if (location.pathname.endsWith('/admin.html') || location.pathname.endsWith('admin.html')) {
+  const css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.href = 'css/admin-2026.css';
+  document.head.appendChild(css);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const wrap = document.querySelector('.admin-wrap');
+    if (wrap && !document.querySelector('.admin-intro')) {
+      const intro = document.createElement('section');
+      intro.className = 'admin-intro';
+      intro.innerHTML = `
+        <div>
+          <div class="eyebrow">Studio de publication</div>
+          <h1>Gérer la médiathèque</h1>
+          <p>Publie une histoire, retrouve rapidement un contenu existant et organise les catégories sans perdre le contexte.</p>
+        </div>
+        <div class="admin-search">
+          <input id="admin-global-search" type="search" placeholder="Filtrer les éléments affichés…" aria-label="Filtrer les contenus de l’administration">
+          <button type="button" class="btn-primary" data-action="new-audio" style="margin-top:8px;width:100%">＋ Nouvelle histoire</button>
+        </div>`;
+      wrap.prepend(intro);
+    }
+
+    const ux = document.createElement('script');
+    ux.src = 'js/admin-ux.js';
+    document.body.appendChild(ux);
+  });
+}
