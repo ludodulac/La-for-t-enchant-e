@@ -3,72 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#09100d">
   <title>Connexion — La Forêt Enchantée</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <style>
-    .password-wrap { position: relative; }
-    .password-wrap input { padding-right: 48px; width: 100%; }
-    .btn-eye {
-      position: absolute; right: 12px; top: 50%;
-      transform: translateY(-50%);
-      background: none; border: none;
-      font-size: 1.1rem; cursor: pointer;
-      opacity: 0.6; padding: 0;
-    }
-    .msg-success {
-      background: #2d6a4a; color: #d4f0e0;
-      border: 1px solid #4a9a6a;
-      border-radius: 10px; padding: 12px;
-      margin-top: 1rem; text-align: center;
-      font-size: 0.95rem; display: none;
-    }
-    .msg-error {
-      background: #6a2d2d; color: #f0d4d4;
-      border: 1px solid #9a4a4a;
-      border-radius: 10px; padding: 12px;
-      margin-top: 1rem; text-align: center;
-      font-size: 0.95rem; display: none;
-    }
-    .msg-debug {
-      background: #1a1a2e; color: #a0c0ff;
-      border: 1px solid #3050a0;
-      border-radius: 10px; padding: 12px;
-      margin-top: 1rem; font-size: 0.8rem;
-      font-family: monospace; display: none;
-      word-break: break-all;
-    }
+    body{font-family:Inter,sans-serif}.password-wrap{position:relative}.password-wrap input{padding-right:48px;width:100%}.btn-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:1.05rem;cursor:pointer;opacity:.65;padding:4px}.login-message{border-radius:10px;padding:12px;margin-top:1rem;text-align:center;font-size:.9rem;display:none}.login-message.success{display:block;background:#2d6a4a;color:#d4f0e0;border:1px solid #4a9a6a}.login-message.error{display:block;background:#6a2d2d;color:#f0d4d4;border:1px solid #9a4a4a}
   </style>
 </head>
 <body>
   <div class="login-page">
     <div class="login-card">
       <div class="login-logo">🌲 La Forêt Enchantée</div>
-      <div class="login-sub">Espace administrateur</div>
+      <div class="login-sub">Administration commune · Médiathèque & Wikignose</div>
 
-      <div class="form-group">
-        <label for="email">Adresse e-mail</label>
-        <input type="email" id="email" placeholder="admin@exemple.com" autocomplete="email">
-      </div>
-
-      <div class="form-group">
-        <label for="password">Mot de passe</label>
-        <div class="password-wrap">
-          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
-          <button type="button" class="btn-eye" id="btn-eye">👁</button>
+      <form id="login-form" novalidate>
+        <div class="form-group">
+          <label for="email">Adresse e-mail</label>
+          <input type="email" id="email" autocomplete="email" required>
         </div>
-      </div>
+        <div class="form-group">
+          <label for="password">Mot de passe</label>
+          <div class="password-wrap">
+            <input type="password" id="password" autocomplete="current-password" required>
+            <button type="button" class="btn-eye" id="btn-eye" aria-label="Afficher le mot de passe">👁</button>
+          </div>
+        </div>
+        <button class="btn-primary" id="btn-login" type="submit">Se connecter</button>
+      </form>
 
-      <button class="btn-primary" id="btn-login">Se connecter</button>
-
-      <div class="msg-success" id="msg-success">✅ Connexion réussie ! Redirection en cours…</div>
-      <div class="msg-error" id="msg-error"></div>
-      <div class="msg-debug" id="msg-debug"></div>
-
-      <p style="margin-top:1.5rem">
-        <a href="index.html" style="font-size:0.85rem;opacity:0.55">← Retour au site</a>
-      </p>
+      <div class="login-message" id="login-message" role="status" aria-live="polite"></div>
+      <p style="margin-top:1.5rem"><a href="index.html" style="font-size:.85rem;opacity:.6">← Retour à la médiathèque</a></p>
     </div>
   </div>
 
@@ -76,75 +43,58 @@
   <script src="js/supabase.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    function debug(msg) {
-      const el = document.getElementById('msg-debug');
-      el.style.display = 'block';
-      el.textContent = msg;
+    const message = document.getElementById('login-message');
+    const button = document.getElementById('btn-login');
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = `login-message ${type}`;
     }
 
-    // Vérifier que Supabase est bien chargé
-    if (typeof window.supabase === 'undefined') {
-      debug('❌ ERREUR : SDK Supabase non chargé');
-    } else {
-      debug('✅ SDK chargé — prêt');
+    async function isAuthorizedAdmin() {
+      const { data, error } = await dbClient.rpc('is_app_admin');
+      return !error && data === true;
     }
 
-    // Rediriger si déjà connecté
-    getSession().then(session => {
-      if (session) window.location.href = 'admin.html';
+    getSession().then(async session => {
+      if (!session) return;
+      if (await isAuthorizedAdmin()) location.replace('admin.html');
+      else await dbClient.auth.signOut();
     });
 
     document.getElementById('btn-eye').addEventListener('click', () => {
       const input = document.getElementById('password');
-      if (input.type === 'password') {
-        input.type = 'text';
-        document.getElementById('btn-eye').textContent = '🙈';
-      } else {
-        input.type = 'password';
-        document.getElementById('btn-eye').textContent = '👁';
-      }
+      const reveal = input.type === 'password';
+      input.type = reveal ? 'text' : 'password';
+      document.getElementById('btn-eye').textContent = reveal ? '🙈' : '👁';
+      document.getElementById('btn-eye').setAttribute('aria-label', reveal ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
     });
 
-    document.getElementById('btn-login').addEventListener('click', async () => {
-      const btn   = document.getElementById('btn-login');
+    document.getElementById('login-form').addEventListener('submit', async event => {
+      event.preventDefault();
       const email = document.getElementById('email').value.trim();
-      const pass  = document.getElementById('password').value;
-      const succ  = document.getElementById('msg-success');
-      const err   = document.getElementById('msg-error');
+      const password = document.getElementById('password').value;
+      if (!email || !password) return showMessage('Renseigne ton e-mail et ton mot de passe.', 'error');
 
-      succ.style.display = 'none';
-      err.style.display  = 'none';
-
-      if (!email || !pass) {
-        err.textContent   = '❌ Merci de remplir l\'e-mail et le mot de passe.';
-        err.style.display = 'block';
-        return;
-      }
-
-      btn.disabled    = true;
-      btn.textContent = 'Connexion en cours…';
-      debug('⏳ Tentative de connexion pour : ' + email);
+      button.disabled = true;
+      button.textContent = 'Connexion…';
+      message.className = 'login-message';
 
       try {
-        const { data, error } = await signIn(email, pass);
-
-        if (error) {
-          debug('❌ Erreur Supabase : ' + error.message + ' (code: ' + error.status + ')');
-          err.textContent   = '❌ ' + error.message;
-          err.style.display = 'block';
-          btn.disabled    = false;
-          btn.textContent = 'Se connecter';
+        const { error } = await signIn(email, password);
+        if (error) throw error;
+        if (!(await isAuthorizedAdmin())) {
+          await dbClient.auth.signOut();
+          showMessage('Ce compte est valide mais ne fait pas partie des administrateurs autorisés.', 'error');
           return;
         }
-
-        debug('✅ Connecté ! User : ' + data.user.email);
-        succ.style.display = 'block';
-        setTimeout(() => { window.location.href = 'admin.html'; }, 1500);
-
-      } catch(e) {
-        debug('❌ Exception : ' + e.message);
-        btn.disabled    = false;
-        btn.textContent = 'Se connecter';
+        showMessage('Connexion réussie.', 'success');
+        location.replace('admin.html');
+      } catch (error) {
+        showMessage(error?.message || 'Connexion impossible.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Se connecter';
       }
     });
   </script>
