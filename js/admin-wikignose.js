@@ -13,6 +13,13 @@
     return ({ pending: 'En attente', indexing: 'Indexation', indexed: 'Indexé', error: 'Erreur', archived: 'Archivé' })[status] || status || '—';
   }
 
+  async function sha256File(file) {
+    if (!globalThis.crypto?.subtle) return null;
+    const buffer = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buffer);
+    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+
   async function init() {
     const tabs = document.querySelector('.tabs');
     const wrap = document.querySelector('.admin-wrap');
@@ -127,11 +134,26 @@
     let done = 0;
     try {
       for (const file of files) {
+        status.textContent = `Vérification ${done + 1}/${files.length} : ${file.name}`;
+        const sha256 = await sha256File(file);
+        if (sha256) {
+          const duplicate = await dbClient.from('wikignose_pending_documents')
+            .select('id,original_filename,status').eq('sha256', sha256).maybeSingle();
+          if (duplicate.error) {
+            status.textContent = `Vérification impossible pour ${file.name} : ${duplicate.error.message}`;
+            continue;
+          }
+          if (duplicate.data) {
+            status.textContent = `${file.name} est déjà présent dans Wikignose sous le nom « ${duplicate.data.original_filename} » (${statusLabel(duplicate.data.status)}).`;
+            continue;
+          }
+        }
+
         status.textContent = `Envoi ${done + 1}/${files.length} : ${file.name}`;
         const path = `pending/${new Date().toISOString().replace(/[:.]/g, '-')}-${crypto.randomUUID()}-${safeName(file.name)}`;
         const upload = await dbClient.storage.from(BUCKET).upload(path, file, { contentType: 'application/pdf', upsert: false });
         if (upload.error) { status.textContent = `Échec pour ${file.name} : ${upload.error.message}`; continue; }
-        const meta = await dbClient.from('wikignose_pending_documents').insert({ storage_path: path, original_filename: file.name, file_size: file.size, ...hints });
+        const meta = await dbClient.from('wikignose_pending_documents').insert({ storage_path: path, original_filename: file.name, file_size: file.size, sha256, ...hints });
         if (meta.error) {
           await dbClient.storage.from(BUCKET).remove([path]);
           status.textContent = `Fichier non enregistré dans la file : ${meta.error.message}`;
