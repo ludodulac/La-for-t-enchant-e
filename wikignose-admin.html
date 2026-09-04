@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/wikignose.css">
   <link rel="stylesheet" href="css/admin-2026.css">
   <style>
-    .wg-admin-shell{max-width:1120px;margin:0 auto;padding:42px 24px 90px}.wg-admin-hero{margin-bottom:28px}.wg-admin-hero h1{font-size:clamp(2rem,5vw,4rem);margin:.2rem 0 .7rem}.wg-admin-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:24px;margin:18px 0}.wg-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.wg-admin-grid .wide{grid-column:1/-1}.wg-admin-grid label{display:block;font-size:.84rem;margin-bottom:7px;color:#aeb9b3}.wg-admin-grid input{width:100%}.wg-layers{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}.wg-layer{padding:16px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}.wg-layer p{margin:.45rem 0 0;color:#8e9a94;font-size:.9rem;line-height:1.55}.wg-admin-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.wg-status{color:#9eaaa4;font-size:.9rem}.wg-registry{display:grid;gap:10px}.wg-registry-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07)}.wg-registry-row:last-child{border-bottom:0}.wg-registry-meta{font-size:.8rem;color:#819088;margin-top:4px}.wg-login-gate{min-height:60vh;display:grid;place-items:center;text-align:center}.wg-login-gate[hidden]{display:none}@media(max-width:760px){.wg-admin-grid,.wg-layers{grid-template-columns:1fr}.wg-admin-grid .wide{grid-column:auto}.wg-registry-row{grid-template-columns:1fr}.wg-admin-shell{padding:28px 16px 72px}}
+    .wg-admin-shell{max-width:1120px;margin:0 auto;padding:42px 24px 90px}.wg-admin-hero{margin-bottom:28px}.wg-admin-hero h1{font-size:clamp(2rem,5vw,4rem);margin:.2rem 0 .7rem}.wg-admin-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:24px;margin:18px 0}.wg-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.wg-admin-grid .wide{grid-column:1/-1}.wg-admin-grid label{display:block;font-size:.84rem;margin-bottom:7px;color:#aeb9b3}.wg-admin-grid input{width:100%}.wg-layers{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}.wg-layer{padding:16px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}.wg-layer p{margin:.45rem 0 0;color:#8e9a94;font-size:.9rem;line-height:1.55}.wg-admin-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.wg-status{color:#9eaaa4;font-size:.9rem}.wg-registry{display:grid;gap:10px}.wg-registry-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07)}.wg-registry-row:last-child{border-bottom:0}.wg-registry-meta{font-size:.8rem;color:#819088;margin-top:4px}.wg-login-gate{min-height:60vh;display:grid;place-items:center;text-align:center}.wg-login-gate[hidden]{display:none}.wg-batches{display:grid;gap:16px;margin-top:16px}.wg-batch-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px}.wg-batch-heading{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.07)}.wg-batch-heading h3{margin:0 0 4px}.wg-batch-heading p{margin:0}.wg-summary{margin-top:8px;font-size:.9rem;color:#9eaaa4}.wg-note-strong{color:#d8e0dc}.wg-upload-note{margin-top:10px;line-height:1.55}.wg-upload-note strong{color:#d8e0dc}@media(max-width:760px){.wg-admin-grid,.wg-layers{grid-template-columns:1fr}.wg-admin-grid .wide{grid-column:auto}.wg-registry-row{grid-template-columns:1fr}.wg-admin-shell{padding:28px 16px 72px}.wg-batch-heading{flex-direction:column}}
   </style>
 </head>
 <body class="wikignose-app">
@@ -31,15 +31,15 @@
     <div id="wg-admin-content" hidden>
       <section class="wg-admin-hero">
         <div class="wg-kicker">Administration Wikignose</div>
-        <h1>Ajouter un ouvrage</h1>
-        <p>Prépare un nouveau PDF pour son indexation. L’index lexical et l’index thématique restent deux couches distinctes, comme dans l’ancien Wikignose.</p>
+        <h1>Ajouter des ouvrages</h1>
+        <p>Ajoute autant de PDF que nécessaire. Wikignose les conserve dans le backend privé et les répartit automatiquement en <strong>lots persistants de 10 ouvrages maximum</strong>.</p>
       </section>
 
       <section class="wg-admin-card">
         <div class="wg-admin-grid">
-          <div class="wide"><label for="wg-pdfs">PDF</label><input id="wg-pdfs" class="wg-input" type="file" accept="application/pdf,.pdf" multiple></div>
-          <div><label for="wg-title">Titre</label><input id="wg-title" class="wg-input" type="text" placeholder="Titre de l’ouvrage"></div>
-          <div><label for="wg-school">École / collection</label><input id="wg-school" class="wg-input" type="text" placeholder="Ex. École du cœur"></div>
+          <div class="wide"><label for="wg-pdfs">PDF — sélection multiple</label><input id="wg-pdfs" class="wg-input" type="file" accept="application/pdf,.pdf" multiple><p class="wg-muted wg-upload-note">Tu peux sélectionner 3, 20 ou 100 PDF d’un coup. Ils seront rangés automatiquement dans les lots 1, 2, 3… par groupes de 10.</p></div>
+          <div><label for="wg-title">Titre <span class="wg-muted">(un seul PDF)</span></label><input id="wg-title" class="wg-input" type="text" placeholder="Sinon : nom du fichier"></div>
+          <div><label for="wg-school">École / collection <span class="wg-muted">(appliqué à la sélection)</span></label><input id="wg-school" class="wg-input" type="text" placeholder="Ex. École du cœur"></div>
           <div><label for="wg-course">Cours / volume</label><input id="wg-course" class="wg-input" type="text" placeholder="Ex. Cours 3"></div>
           <div><label for="wg-current">Courant</label><input id="wg-current" class="wg-input" type="text" placeholder="Ex. Tradition essénienne"></div>
           <div class="wide"><label for="wg-masters">Maître(s) / auteur(s)</label><input id="wg-masters" class="wg-input" type="text" placeholder="Séparer par des virgules"></div>
@@ -50,17 +50,18 @@
           <div class="wg-layer"><strong>2. Pertinence thématique</strong><p>Index sémantique : thèmes, sous-thèmes et importance. Cette couche peut ensuite être enrichie ou recalibrée lors de l’intégration.</p></div>
         </div>
 
-        <div class="wg-admin-actions"><button id="wg-upload" class="wg-primary" type="button">Indexer / préparer l’ouvrage</button><span id="wg-status" class="wg-status" role="status" aria-live="polite"></span></div>
+        <div class="wg-admin-actions"><button id="wg-upload" class="wg-primary" type="button">Ajouter à la file d’indexation</button><span id="wg-status" class="wg-status" role="status" aria-live="polite"></span></div>
       </section>
 
       <section class="wg-admin-card">
-        <div class="wg-results-heading"><div><h2>Registre d’ingestion</h2><p class="wg-muted">Les PDF envoyés ici sont stockés dans le bucket privé Wikignose et inscrits dans le registre durable.</p></div></div>
-        <div id="wg-queue" class="wg-registry"><div class="wg-muted">Chargement…</div></div>
+        <div class="wg-results-heading"><div><h2>File d’ingestion par lots</h2><p class="wg-muted">Chaque lot garde son numéro et ses positions 1 à 10, même après fermeture ou reconnexion.</p><div id="wg-summary" class="wg-summary" aria-live="polite"></div></div></div>
+        <div id="wg-queue" class="wg-batches"><div class="wg-muted">Chargement…</div></div>
       </section>
 
       <section class="wg-admin-card">
-        <h2>Étape d’indexation</h2>
-        <p class="wg-muted">L’envoi prépare et conserve l’ouvrage dans le backend Wikignose. L’intégration finale dans l’index public reste une étape séparée : extraction lexicale, occurrences, puis enrichissement thématique.</p>
+        <h2>Comment travailler ici, 10 par 10</h2>
+        <p class="wg-muted">Quand un lot est prêt, clique sur <span class="wg-note-strong">« Démarrer ce lot »</span>, puis sur <span class="wg-note-strong">« Copier le manifeste »</span>. Colle le manifeste dans cette conversation et demande simplement de traiter ce lot. Les PDF restent déjà enregistrés dans Wikignose : tu n’as pas besoin de les sélectionner à nouveau dans l’admin.</p>
+        <p class="wg-muted">Le traitement n’est pas autonome en arrière-plan : la conversation sert à piloter chaque lot. Le registre, lui, reste persistant et permet de reprendre exactement où nous en étions.</p>
       </section>
     </div>
   </main>
