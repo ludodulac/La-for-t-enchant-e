@@ -1,6 +1,8 @@
 (() => {
   const BUCKET = 'wikignose-pdfs';
   const BATCH_SIZE = 10;
+  const PROJECT_REF = new URL(SUPABASE_URL).hostname.split('.')[0];
+  const TUS_ENDPOINT = `https://${PROJECT_REF}.storage.supabase.co/storage/v1/upload/resumable`;
   const $ = (id) => document.getElementById(id);
 
   function safeName(name) {
@@ -11,14 +13,14 @@
     return ({ pending: 'En attente', indexing: 'Lot en cours', indexed: 'Indexé', error: 'Erreur', archived: 'Archivé' })[status] || status || '—';
   }
 
+  function setStatus(text) { $('wg-status').textContent = text; }
+
   async function sha256File(file) {
     if (!globalThis.crypto?.subtle) return null;
     const buffer = await file.arrayBuffer();
     const digest = await crypto.subtle.digest('SHA-256', buffer);
     return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
   }
-
-  function setStatus(text) { $('wg-status').textContent = text; }
 
   async function fetchRegistry() {
     const { data, error } = await dbClient.from('wikignose_pending_documents')
@@ -59,20 +61,16 @@
   function itemRow(item) {
     const row = document.createElement('article');
     row.className = 'wg-registry-row';
-
     const info = document.createElement('div');
     const title = document.createElement('strong');
     title.textContent = item.title_hint || item.original_filename;
     const meta = document.createElement('div');
     meta.className = 'wg-registry-meta';
-    const size = ((item.file_size || 0) / 1024 / 1024).toFixed(2);
-    meta.textContent = `#${item.batch_position || '—'} · ${item.original_filename} · ${size} Mo`;
+    meta.textContent = `#${item.batch_position || '—'} · ${item.original_filename} · ${((item.file_size || 0) / 1024 / 1024).toFixed(2)} Mo`;
     info.append(title, meta);
-
     const status = document.createElement('div');
     status.className = 'wg-registry-meta';
     status.textContent = statusLabel(item.status);
-
     const actions = document.createElement('div');
     if (['pending', 'error'].includes(item.status)) {
       const remove = document.createElement('button');
@@ -85,7 +83,6 @@
       actions.className = 'wg-registry-meta';
       actions.textContent = 'Conservé';
     }
-
     row.append(info, status, actions);
     return row;
   }
@@ -93,7 +90,6 @@
   function createBatchCard(batchNo, items) {
     const card = document.createElement('section');
     card.className = 'wg-batch-card';
-
     const heading = document.createElement('div');
     heading.className = 'wg-batch-heading';
     const copy = document.createElement('div');
@@ -103,7 +99,6 @@
     meta.className = 'wg-muted';
     meta.textContent = `${items.length}/${BATCH_SIZE} ouvrages · ${batchState(items)}`;
     copy.append(title, meta);
-
     const actions = document.createElement('div');
     actions.className = 'wg-admin-actions';
     if (batchNo) {
@@ -113,7 +108,6 @@
       copyButton.textContent = 'Copier le manifeste';
       copyButton.addEventListener('click', () => copyBatchManifest(batchNo, items));
       actions.appendChild(copyButton);
-
       if (items.some((item) => item.status === 'pending')) {
         const start = document.createElement('button');
         start.className = 'wg-primary';
@@ -163,69 +157,84 @@
       updateSummary(data);
       if (!data.length) {
         list.innerHTML = '<div class="wg-muted">Aucun ouvrage enregistré.</div>';
-        return;
+        return data;
       }
       list.replaceChildren(...groupBatches(data).map(([batchNo, items]) => createBatchCard(batchNo, items)));
+      return data;
     } catch (error) {
       list.textContent = 'Le registre Wikignose n’est pas disponible : ' + error.message;
+      throw error;
     }
   }
 
-  async function nextBatchSlots(count) {
+  async function nextNewBatchNumber() {
     const items = await fetchRegistry();
-    let maxBatch = 0;
-    const occupied = new Map();
-    items.forEach((item) => {
-      if (!item.batch_no || !item.batch_position) return;
-      maxBatch = Math.max(maxBatch, item.batch_no);
-      if (!occupied.has(item.batch_no)) occupied.set(item.batch_no, new Set());
-      occupied.get(item.batch_no).add(item.batch_position);
-    });
+    return Math.max(0, ...items.map((item) => Number(item.batch_no) || 0)) + 1;
+  }
 
-    const slots = [];
-    let batchNo = maxBatch || 1;
-    while (slots.length < count) {
-      const used = occupied.get(batchNo) || new Set();
-      for (let position = 1; position <= BATCH_SIZE && slots.length < count; position += 1) {
-        if (!used.has(position)) {
-          slots.push({ batch_no: batchNo, batch_position: position });
-          used.add(position);
-        }
-      }
-      occupied.set(batchNo, used);
-      if (slots.length < count) batchNo += 1;
-    }
-    return slots;
+  function buildProgressRows(files) {
+    const root = $('wg-upload-progress');
+    root.replaceChildren();
+    const states = new Map();
+    files.forEach((file, index) => {
+      const row = document.createElement('div');
+      row.className = 'wg-upload-row';
+      const name = document.createElement('strong');
+      name.textContent = `${index + 1}. ${file.name}`;
+      const state = document.createElement('span');
+      state.className = 'wg-upload-state';
+      state.textContent = 'En attente';
+      row.append(name, state);
+      root.appendChild(row);
+      states.set(index, state);
+    });
+    return (index, text, stateName) => {
+      const state = states.get(index);
+      if (!state) return;
+      state.textContent = text;
+      state.dataset.state = stateName || '';
+    };
+  }
+
+  async function tusUpload(file, path, onProgress) {
+    if (!globalThis.tus?.Upload) throw new Error('Le module d’upload reprenable n’est pas chargé. Recharge la page.');
+    const { data: { session }, error: sessionError } = await dbClient.auth.getSession();
+    if (sessionError || !session?.access_token) throw new Error('Session expirée. Reconnecte-toi puis réessaie.');
+    return new Promise((resolve, reject) => {
+      const upload = new tus.Upload(file, {
+        endpoint: TUS_ENDPOINT,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: { authorization: `Bearer ${session.access_token}`, apikey: SUPABASE_ANON_KEY },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        chunkSize: 6 * 1024 * 1024,
+        metadata: { bucketName: BUCKET, objectName: path, contentType: 'application/pdf', cacheControl: '3600' },
+        onError: reject,
+        onProgress: (sent, total) => onProgress(Math.round((sent / total) * 100)),
+        onSuccess: () => resolve()
+      });
+      upload.findPreviousUploads().then((previous) => {
+        if (previous.length) upload.resumeFromPreviousUpload(previous[0]);
+        upload.start();
+      }).catch(reject);
+    });
   }
 
   async function saveBatchInstruction(batchNo, instruction) {
     if (!batchNo) return;
     const clean = String(instruction || '').trim() || null;
     setStatus(`Enregistrement de la consigne du lot ${batchNo}…`);
-    const { error } = await dbClient.from('wikignose_pending_documents')
-      .update({ batch_instruction: clean })
-      .eq('batch_no', batchNo);
-    if (error) {
-      setStatus(`Impossible d’enregistrer la consigne du lot ${batchNo} : ${error.message}`);
-      return;
-    }
+    const { error } = await dbClient.from('wikignose_pending_documents').update({ batch_instruction: clean }).eq('batch_no', batchNo);
+    if (error) { setStatus(`Impossible d’enregistrer la consigne du lot ${batchNo} : ${error.message}`); return; }
     setStatus(`Consigne du lot ${batchNo} enregistrée.`);
     await loadQueue();
   }
 
   async function setBatchStatus(batchNo, status) {
     setStatus(`Mise à jour du lot ${batchNo}…`);
-    const payload = status === 'indexed'
-      ? { status, indexed_at: new Date().toISOString() }
-      : { status, indexed_at: null };
-    const { error } = await dbClient.from('wikignose_pending_documents')
-      .update(payload)
-      .eq('batch_no', batchNo)
-      .in('status', status === 'indexing' ? ['pending', 'error'] : ['indexing']);
-    if (error) {
-      setStatus(`Impossible de mettre à jour le lot ${batchNo} : ${error.message}`);
-      return;
-    }
+    const payload = status === 'indexed' ? { status, indexed_at: new Date().toISOString() } : { status, indexed_at: null };
+    const { error } = await dbClient.from('wikignose_pending_documents').update(payload).eq('batch_no', batchNo).in('status', status === 'indexing' ? ['pending', 'error'] : ['indexing']);
+    if (error) { setStatus(`Impossible de mettre à jour le lot ${batchNo} : ${error.message}`); return; }
     setStatus(status === 'indexing' ? `Lot ${batchNo} prêt à être traité ici.` : `Lot ${batchNo} remis en attente.`);
     await loadQueue();
   }
@@ -237,17 +246,10 @@
       count: items.length,
       ai_instruction: instruction,
       task: `Traite le lot Wikignose ${batchNo} à partir des PDF privés enregistrés dans le backend, en respectant la consigne IA du lot, puis mets à jour l'index et le registre.`,
-      documents: items.map((item) => ({
-        id: item.id,
-        position: item.batch_position,
-        filename: item.original_filename,
-        title: item.title_hint,
-        status: item.status
-      }))
+      documents: items.map((item) => ({ id: item.id, position: item.batch_position, filename: item.original_filename, title: item.title_hint, status: item.status }))
     };
-    const text = JSON.stringify(manifest, null, 2);
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(JSON.stringify(manifest, null, 2));
       setStatus(`Manifeste du lot ${batchNo} copié avec sa consigne IA.`);
     } catch {
       setStatus(`Copie automatique impossible. Le lot ${batchNo} reste prêt dans le registre.`);
@@ -271,54 +273,82 @@
     const files = [...(input.files || [])];
     const instruction = $('wg-ai-instruction').value.trim() || null;
     if (!files.length) { setStatus('Choisis d’abord un ou plusieurs PDF.'); return; }
-
+    if (files.length > BATCH_SIZE) { setStatus(`Sélectionne au maximum ${BATCH_SIZE} PDF pour créer un seul lot.`); return; }
     const invalid = files.find((file) => file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'));
     if (invalid) { setStatus(`${invalid.name} n’est pas reconnu comme PDF.`); return; }
 
+    const updateProgress = buildProgressRows(files);
     button.disabled = true;
-    let done = 0;
+    input.disabled = true;
+    let success = 0;
     let duplicates = 0;
+    let failures = 0;
     try {
-      const slots = await nextBatchSlots(files.length);
+      const batchNo = await nextNewBatchNumber();
+      let nextPosition = 1;
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
-        const slot = slots[index];
-        setStatus(`Enregistrement ${index + 1}/${files.length} · lot ${slot.batch_no} · ${file.name}`);
-        const sha256 = await sha256File(file);
-        if (sha256) {
-          const duplicate = await dbClient.from('wikignose_pending_documents')
-            .select('original_filename,status,batch_no').eq('sha256', sha256).maybeSingle();
-          if (duplicate.error) { setStatus(`Vérification impossible pour ${file.name} : ${duplicate.error.message}`); continue; }
-          if (duplicate.data) { duplicates += 1; continue; }
-        }
+        updateProgress(index, 'Vérification…');
+        let sha256 = null;
+        try {
+          sha256 = await sha256File(file);
+          if (sha256) {
+            const duplicate = await dbClient.from('wikignose_pending_documents').select('original_filename,status,batch_no').eq('sha256', sha256).maybeSingle();
+            if (duplicate.error) throw duplicate.error;
+            if (duplicate.data) {
+              duplicates += 1;
+              updateProgress(index, `Déjà enregistré · lot ${duplicate.data.batch_no || '—'}`, 'duplicate');
+              continue;
+            }
+          }
 
-        const path = `pending/${new Date().toISOString().replace(/[:.]/g, '-')}-${crypto.randomUUID()}-${safeName(file.name)}`;
-        const upload = await dbClient.storage.from(BUCKET).upload(path, file, { contentType: 'application/pdf', upsert: false });
-        if (upload.error) { setStatus(`Échec d’envoi pour ${file.name} : ${upload.error.message}`); continue; }
+          const position = nextPosition;
+          const path = `pending/${new Date().toISOString().replace(/[:.]/g, '-')}-${crypto.randomUUID()}-${safeName(file.name)}`;
+          updateProgress(index, 'Envoi 0 %');
+          await tusUpload(file, path, (percent) => updateProgress(index, `Envoi ${percent} %`));
+          updateProgress(index, 'PDF envoyé · inscription…');
 
-        const meta = await dbClient.from('wikignose_pending_documents').insert({
-          storage_path: path,
-          original_filename: file.name,
-          file_size: file.size,
-          sha256,
-          batch_no: slot.batch_no,
-          batch_position: slot.batch_position,
-          batch_instruction: instruction,
-          title_hint: file.name.replace(/\.pdf$/i, '')
-        });
-        if (meta.error) {
-          await dbClient.storage.from(BUCKET).remove([path]);
-          setStatus(`Fichier non enregistré dans le registre : ${meta.error.message}`);
-          continue;
+          const { data: inserted, error: metaError } = await dbClient.from('wikignose_pending_documents').insert({
+            storage_path: path,
+            original_filename: file.name,
+            file_size: file.size,
+            sha256,
+            batch_no: batchNo,
+            batch_position: position,
+            batch_instruction: instruction,
+            title_hint: file.name.replace(/\.pdf$/i, '')
+          }).select('id,batch_no,batch_position,original_filename').single();
+          if (metaError || !inserted?.id) {
+            await dbClient.storage.from(BUCKET).remove([path]);
+            throw metaError || new Error('Le registre n’a pas confirmé le document.');
+          }
+
+          success += 1;
+          nextPosition += 1;
+          updateProgress(index, `Confirmé · lot ${batchNo} · #${position}`, 'ok');
+        } catch (error) {
+          failures += 1;
+          console.error('Wikignose upload failure', file.name, error);
+          updateProgress(index, `Échec · ${error?.message || 'erreur inconnue'}`, 'error');
         }
-        done += 1;
       }
-      input.value = '';
-      $('wg-ai-instruction').value = '';
-      setStatus(`${done} fichier${done > 1 ? 's' : ''} enregistré${done > 1 ? 's' : ''}${duplicates ? ` · ${duplicates} doublon${duplicates > 1 ? 's' : ''} ignoré${duplicates > 1 ? 's' : ''}` : ''}.`);
-      await loadQueue();
+
+      const registry = await loadQueue();
+      const confirmed = registry.filter((item) => item.batch_no === batchNo).length;
+      if (success > 0 && confirmed === success && failures === 0) {
+        input.value = '';
+        $('wg-ai-instruction').value = '';
+        setStatus(`Lot ${batchNo} confirmé : ${success} ouvrage${success > 1 ? 's' : ''} enregistré${success > 1 ? 's' : ''}${duplicates ? ` · ${duplicates} doublon${duplicates > 1 ? 's' : ''} ignoré${duplicates > 1 ? 's' : ''}` : ''}.`);
+      } else if (success > 0) {
+        setStatus(`${success} ouvrage${success > 1 ? 's' : ''} confirmé${success > 1 ? 's' : ''}, ${failures} en échec. Ne renvoie que les fichiers en échec : les doublons seront ignorés automatiquement.`);
+      } else if (duplicates > 0 && failures === 0) {
+        setStatus(`Tous les PDF sélectionnés étaient déjà enregistrés. Aucun doublon n’a été créé.`);
+      } else {
+        setStatus(`Aucun nouvel ouvrage confirmé. Regarde le détail rouge ci-dessus avant de réessayer.`);
+      }
     } finally {
       button.disabled = false;
+      input.disabled = false;
     }
   }
 
@@ -330,7 +360,8 @@
     $('wg-upload').addEventListener('click', uploadFiles);
     $('wg-pdfs').addEventListener('change', () => {
       const files = [...($('wg-pdfs').files || [])];
-      setStatus(`${files.length || 0} PDF sélectionné${files.length > 1 ? 's' : ''}. Un lot peut contenir de 1 à ${BATCH_SIZE} ouvrages.`);
+      buildProgressRows(files);
+      setStatus(`${files.length || 0} PDF sélectionné${files.length > 1 ? 's' : ''}. Maximum ${BATCH_SIZE} par lot.`);
     });
     $('wg-signout').addEventListener('click', async () => {
       await dbClient.auth.signOut();
