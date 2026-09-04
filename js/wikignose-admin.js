@@ -22,7 +22,7 @@
 
   async function fetchRegistry() {
     const { data, error } = await dbClient.from('wikignose_pending_documents')
-      .select('id,storage_path,original_filename,file_size,status,uploaded_at,indexed_at,index_note,title_hint,school_hint,course_hint,current_hint,masters_hint,batch_no,batch_position')
+      .select('id,storage_path,original_filename,file_size,status,uploaded_at,indexed_at,index_note,title_hint,school_hint,course_hint,current_hint,masters_hint,batch_no,batch_position,batch_instruction')
       .order('batch_no', { ascending: true, nullsFirst: false })
       .order('batch_position', { ascending: true, nullsFirst: false })
       .order('uploaded_at', { ascending: true })
@@ -66,8 +66,7 @@
     const meta = document.createElement('div');
     meta.className = 'wg-registry-meta';
     const size = ((item.file_size || 0) / 1024 / 1024).toFixed(2);
-    const extras = [item.school_hint, item.course_hint, item.current_hint].filter(Boolean).join(' · ');
-    meta.textContent = `#${item.batch_position || '—'} · ${item.original_filename} · ${size} Mo${extras ? ' · ' + extras : ''}`;
+    meta.textContent = `#${item.batch_position || '—'} · ${item.original_filename} · ${size} Mo`;
     info.append(title, meta);
 
     const status = document.createElement('div');
@@ -134,10 +133,26 @@
     }
     heading.append(copy, actions);
 
+    const noteWrap = document.createElement('div');
+    noteWrap.className = 'wg-batch-note';
+    const label = document.createElement('label');
+    label.textContent = 'Instructions pour l’IA';
+    const textarea = document.createElement('textarea');
+    textarea.className = 'wg-input';
+    textarea.value = items.find((item) => item.batch_instruction)?.batch_instruction || '';
+    textarea.placeholder = 'Ajoute ou corrige ici le contexte de ce lot…';
+    const save = document.createElement('button');
+    save.className = 'wg-secondary';
+    save.type = 'button';
+    save.textContent = 'Enregistrer la consigne';
+    save.style.marginTop = '8px';
+    save.addEventListener('click', () => saveBatchInstruction(batchNo, textarea.value));
+    noteWrap.append(label, textarea, save);
+
     const body = document.createElement('div');
     body.className = 'wg-registry';
     body.replaceChildren(...items.map(itemRow));
-    card.append(heading, body);
+    card.append(heading, noteWrap, body);
     return card;
   }
 
@@ -183,6 +198,21 @@
     return slots;
   }
 
+  async function saveBatchInstruction(batchNo, instruction) {
+    if (!batchNo) return;
+    const clean = String(instruction || '').trim() || null;
+    setStatus(`Enregistrement de la consigne du lot ${batchNo}…`);
+    const { error } = await dbClient.from('wikignose_pending_documents')
+      .update({ batch_instruction: clean })
+      .eq('batch_no', batchNo);
+    if (error) {
+      setStatus(`Impossible d’enregistrer la consigne du lot ${batchNo} : ${error.message}`);
+      return;
+    }
+    setStatus(`Consigne du lot ${batchNo} enregistrée.`);
+    await loadQueue();
+  }
+
   async function setBatchStatus(batchNo, status) {
     setStatus(`Mise à jour du lot ${batchNo}…`);
     const payload = status === 'indexed'
@@ -201,26 +231,24 @@
   }
 
   async function copyBatchManifest(batchNo, items) {
+    const instruction = items.find((item) => item.batch_instruction)?.batch_instruction || '';
     const manifest = {
       wikignose_batch: batchNo,
       count: items.length,
-      instruction: `Traite le lot Wikignose ${batchNo} (maximum ${BATCH_SIZE} ouvrages) à partir des PDF privés enregistrés dans le backend, puis mets à jour l'index et le registre.`,
+      ai_instruction: instruction,
+      task: `Traite le lot Wikignose ${batchNo} à partir des PDF privés enregistrés dans le backend, en respectant la consigne IA du lot, puis mets à jour l'index et le registre.`,
       documents: items.map((item) => ({
         id: item.id,
         position: item.batch_position,
         filename: item.original_filename,
         title: item.title_hint,
-        school: item.school_hint,
-        course: item.course_hint,
-        current: item.current_hint,
-        masters: item.masters_hint,
         status: item.status
       }))
     };
     const text = JSON.stringify(manifest, null, 2);
     try {
       await navigator.clipboard.writeText(text);
-      setStatus(`Manifeste du lot ${batchNo} copié. Colle-le simplement dans cette conversation.`);
+      setStatus(`Manifeste du lot ${batchNo} copié avec sa consigne IA.`);
     } catch {
       setStatus(`Copie automatique impossible. Le lot ${batchNo} reste prêt dans le registre.`);
     }
@@ -241,19 +269,11 @@
     const input = $('wg-pdfs');
     const button = $('wg-upload');
     const files = [...(input.files || [])];
+    const instruction = $('wg-ai-instruction').value.trim() || null;
     if (!files.length) { setStatus('Choisis d’abord un ou plusieurs PDF.'); return; }
 
     const invalid = files.find((file) => file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'));
     if (invalid) { setStatus(`${invalid.name} n’est pas reconnu comme PDF.`); return; }
-
-    const masters = $('wg-masters').value.split(',').map((v) => v.trim()).filter(Boolean);
-    const hints = {
-      title_hint: files.length === 1 ? ($('wg-title').value.trim() || null) : null,
-      school_hint: $('wg-school').value.trim() || null,
-      course_hint: $('wg-course').value.trim() || null,
-      current_hint: $('wg-current').value.trim() || null,
-      masters_hint: masters.length ? masters : null
-    };
 
     button.disabled = true;
     let done = 0;
@@ -263,7 +283,7 @@
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
         const slot = slots[index];
-        setStatus(`Préparation ${index + 1}/${files.length} · lot ${slot.batch_no} · ${file.name}`);
+        setStatus(`Enregistrement ${index + 1}/${files.length} · lot ${slot.batch_no} · ${file.name}`);
         const sha256 = await sha256File(file);
         if (sha256) {
           const duplicate = await dbClient.from('wikignose_pending_documents')
@@ -283,11 +303,8 @@
           sha256,
           batch_no: slot.batch_no,
           batch_position: slot.batch_position,
-          title_hint: hints.title_hint || file.name.replace(/\.pdf$/i, ''),
-          school_hint: hints.school_hint,
-          course_hint: hints.course_hint,
-          current_hint: hints.current_hint,
-          masters_hint: hints.masters_hint
+          batch_instruction: instruction,
+          title_hint: file.name.replace(/\.pdf$/i, '')
         });
         if (meta.error) {
           await dbClient.storage.from(BUCKET).remove([path]);
@@ -297,8 +314,8 @@
         done += 1;
       }
       input.value = '';
-      $('wg-title').value = '';
-      setStatus(`${done} fichier${done > 1 ? 's' : ''} ajouté${done > 1 ? 's' : ''}${duplicates ? ` · ${duplicates} doublon${duplicates > 1 ? 's' : ''} ignoré${duplicates > 1 ? 's' : ''}` : ''}. Les lots sont prêts par groupes de ${BATCH_SIZE}.`);
+      $('wg-ai-instruction').value = '';
+      setStatus(`${done} fichier${done > 1 ? 's' : ''} enregistré${done > 1 ? 's' : ''}${duplicates ? ` · ${duplicates} doublon${duplicates > 1 ? 's' : ''} ignoré${duplicates > 1 ? 's' : ''}` : ''}.`);
       await loadQueue();
     } finally {
       button.disabled = false;
@@ -313,9 +330,7 @@
     $('wg-upload').addEventListener('click', uploadFiles);
     $('wg-pdfs').addEventListener('change', () => {
       const files = [...($('wg-pdfs').files || [])];
-      if (files.length === 1 && !$('wg-title').value.trim()) $('wg-title').value = files[0].name.replace(/\.pdf$/i, '');
-      if (files.length > 1) $('wg-title').value = '';
-      setStatus(`${files.length || 0} PDF sélectionné${files.length > 1 ? 's' : ''}. Ils seront répartis automatiquement par lots de ${BATCH_SIZE}.`);
+      setStatus(`${files.length || 0} PDF sélectionné${files.length > 1 ? 's' : ''}. Un lot peut contenir de 1 à ${BATCH_SIZE} ouvrages.`);
     });
     $('wg-signout').addEventListener('click', async () => {
       await dbClient.auth.signOut();
