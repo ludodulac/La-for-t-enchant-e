@@ -15,7 +15,18 @@ async function getSession() {
 
 async function requireAuth() {
   const session = await getSession();
-  if (!session) window.location.href = 'login.html';
+  if (!session) {
+    window.location.href = 'login.html';
+    return null;
+  }
+
+  const { data: isAdmin, error } = await dbClient.rpc('is_app_admin');
+  if (error || isAdmin !== true) {
+    console.warn('Accès administration refusé', error || 'Compte non autorisé');
+    await dbClient.auth.signOut();
+    window.location.href = 'login.html?unauthorized=1';
+    return null;
+  }
   return session;
 }
 
