@@ -36,6 +36,8 @@ Recherche sémantique dans :
 - maîtres et courants ;
 - importance relative de la section.
 
+La recherche ignore les principaux mots-outils français dans le calcul du score, privilégie les correspondances par mots plutôt que les sous-chaînes trop permissives et ajoute un bonus lorsqu’une expression complète est retrouvée. L’interface affiche des niveaux qualitatifs (`Très pertinent`, `Pertinent`, `À explorer`) plutôt qu’un faux pourcentage de confiance.
+
 L’arrivée de nouveaux documents peut justifier une réévaluation comparative de cette pertinence.
 
 ### Occurrences
@@ -63,12 +65,16 @@ Les noms historiques des PDF sont conservés dans `legacyFile`. Les fichiers PDF
 
 Wikignose est intégré au même `admin.html` que les histoires, le blog et les catégories. Cette mutualisation est volontaire : elle concerne l’administration et l’infrastructure, pas le positionnement public.
 
-Le module Admin prépare :
+Le module Admin permet :
 
-- un ou plusieurs PDF ;
-- titre, cours / volume, école, courant et maîtres / auteurs facultatifs ;
-- stockage privé dans le bucket `wikignose-pdfs` ;
-- création d’une entrée dans `wikignose_pending_documents`.
+- d’envoyer un ou plusieurs PDF ;
+- d’ajouter titre, cours / volume, école, courant et maîtres / auteurs facultatifs ;
+- de stocker les fichiers dans le bucket privé `wikignose-pdfs` ;
+- de créer une entrée dans `wikignose_pending_documents` ;
+- de retirer un ouvrage de la file avec nettoyage du PDF privé ;
+- de calculer une empreinte SHA-256 avant upload afin de refuser le même contenu envoyé sous un autre nom.
+
+La colonne `sha256` est protégée par un index unique partiel : une seconde insertion du même document est également refusée au niveau PostgreSQL, ce qui couvre les envois concurrents.
 
 Les champs facultatifs sont des indications prioritaires mais ne remplacent pas la vérification réelle du document lors de l’indexation.
 
@@ -80,11 +86,13 @@ Les comptes autorisés sont inscrits dans `public.app_admins`. La fonction `publ
 - le bucket PDF reste privé ;
 - les opérations Admin sont protégées par l’authentification et les politiques RLS du projet Supabase commun ;
 - les PDF originaux ne doivent jamais être modifiés par une extraction : toute extraction future crée une nouvelle copie ;
+- un échec d’insertion après upload déclenche le nettoyage du nouveau PDF ;
+- un retrait de file supprime d’abord la ligne SQL puis tente le nettoyage Storage, afin de ne jamais conserver une référence vers un fichier déjà supprimé ;
 - les remplacements de médias audio suivent l’ordre upload nouveau → mise à jour SQL → suppression ancien ; en cas d’échec, les nouveaux fichiers sont nettoyés et les fichiers encore référencés restent intacts.
 
 ## Workflow d’un nouveau PDF
 
-1. Vérifier qu’il n’est pas déjà indexé (nom et SHA-256 si disponible).
+1. Calculer son SHA-256 et vérifier qu’il n’est pas déjà présent dans la file.
 2. Le déposer dans le stockage privé depuis l’Admin.
 3. Identifier ses métadonnées fiables.
 4. Délimiter chapitres et pages.
@@ -110,8 +118,9 @@ Le projet Supabase commun `La forêt enchantée` a été restauré puis vérifi�
 État Wikignose après intégration :
 
 - `app_admins` : 1 administrateur ;
-- `wikignose_pending_documents` : 0 document au démarrage ;
-- bucket privé `wikignose-pdfs` créé et vide au démarrage.
+- `wikignose_pending_documents` : 0 document au démarrage et toujours 0 après les tests transactionnels ;
+- bucket privé `wikignose-pdfs` créé et vide au démarrage ;
+- colonne `sha256` et index unique de déduplication actifs.
 
 Tests RLS réalisés :
 
