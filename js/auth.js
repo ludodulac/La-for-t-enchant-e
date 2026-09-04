@@ -34,8 +34,8 @@ if (location.pathname.endsWith('/admin.html') || location.pathname.endsWith('adm
       intro.innerHTML = `
         <div>
           <div class="eyebrow">Studio de publication</div>
-          <h1>Gérer la médiathèque</h1>
-          <p>Publie une histoire, retrouve rapidement un contenu existant et organise les catégories sans perdre le contexte.</p>
+          <h1>Gérer La Forêt Enchantée</h1>
+          <p>Histoires, journal, catégories et recherche documentaire sont réunis dans le même back-office.</p>
         </div>
         <div class="admin-search">
           <input id="admin-global-search" type="search" placeholder="Filtrer les éléments affichés…" aria-label="Filtrer les contenus de l’administration">
@@ -47,5 +47,9 @@ if (location.pathname.endsWith('/admin.html') || location.pathname.endsWith('adm
     const ux = document.createElement('script');
     ux.src = 'js/admin-ux.js';
     document.body.appendChild(ux);
+
+    const wikignose = document.createElement('script');
+    wikignose.src = 'js/admin-wikignose.js';
+    document.body.appendChild(wikignose);
   });
 }
