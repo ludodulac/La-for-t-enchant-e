@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches:
+      - main
       - redesign/premium-media-library
 
 permissions:
@@ -28,7 +29,9 @@ jobs:
         run: |
           set -euo pipefail
           test -f index.html
+          test -f audio.html
           test -f admin.html
+          test -f login.html
           test -f wikignose.html
           test -f js/wikignose.js
           test -f js/admin-wikignose.js
@@ -36,3 +39,9 @@ jobs:
           test -f docs/WIKIGNOSE.md
           test -f supabase/migrations/20260904_wikignose_module.sql
           test -f supabase/migrations/20260904_unify_admin_permissions.sql
+      - name: Check Supabase project consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'jwyayfkssyagvnablttg' js/supabase.js
+          ! grep -R 'jwtawyeuyvqjikjvfhri' --exclude-dir=.git --exclude='*.md' .
