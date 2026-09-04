@@ -1,8 +1,16 @@
-# Wikignose dans La Forêt Enchantée
+# Wikignose — outil documentaire compagnon
 
-Wikignose est désormais une application de **La Forêt Enchantée** et son implémentation active doit vivre dans ce dépôt.
+Wikignose est hébergé dans le dépôt de **La Forêt Enchantée** pour mutualiser l’infrastructure, la sécurité, l’administration et le déploiement. En revanche, il ne fait pas partie de l’univers éditorial jeunesse : son interface publique doit rester autonome, sobre et discrète.
 
-L’ancien dépôt `ludodulac/Wikignose` reste une archive historique et une source de référence pour les décisions antérieures, mais les évolutions futures doivent être faites ici afin de partager la même interface, le même déploiement et le même projet Supabase.
+L’ancien dépôt `ludodulac/Wikignose` reste une archive historique et une source de référence pour les décisions antérieures. Les évolutions actives sont faites ici afin de partager le même projet Supabase et le même back-office sans maintenir un second système.
+
+## Positionnement produit
+
+- La Forêt Enchantée reste la surface principale et conserve une identité exclusivement orientée médiathèque jeunesse.
+- Wikignose est accessible depuis un lien secondaire en bas de la navigation, sous la forme `Outils · Wikignose`.
+- Wikignose ne doit pas apparaître comme une rubrique principale de la médiathèque ni concurrencer visuellement le journal ou l’écoute.
+- `wikignose.html` possède sa propre identité d’outil documentaire et un simple lien de retour vers La Forêt Enchantée.
+- La page est volontairement marquée `noindex, nofollow` : elle est trouvable par navigation directe depuis le site, mais n’a pas vocation à être une porte d’entrée indexée par les moteurs de recherche.
 
 ## Mission
 
@@ -53,7 +61,7 @@ Les noms historiques des PDF sont conservés dans `legacyFile`. Les fichiers PDF
 
 ## Administration commune
 
-Wikignose est intégré au même `admin.html` que les histoires, le blog et les catégories.
+Wikignose est intégré au même `admin.html` que les histoires, le blog et les catégories. Cette mutualisation est volontaire : elle concerne l’administration et l’infrastructure, pas le positionnement public.
 
 Le module Admin prépare :
 
@@ -116,4 +124,4 @@ Les écritures de test autorisées ont été exécutées dans une transaction an
 
 ## Source historique
 
-La première version a été portée depuis `ludodulac/Wikignose` le 4 septembre 2026. Les principes ci-dessus reprennent les contrats documentés dans ses anciens `AGENTS.md`, `docs/INDEXATION.md` et `docs/ADMIN_INDEXATION.md`, adaptés à l’architecture commune de La Forêt Enchantée.
+La première version a été portée depuis `ludodulac/Wikignose` le 4 septembre 2026. Les principes ci-dessus reprennent les contrats documentés dans ses anciens `AGENTS.md`, `docs/INDEXATION.md` et `docs/ADMIN_INDEXATION.md`, adaptés à l’architecture commune tout en gardant Wikignose séparé de l’expérience jeunesse publique.
