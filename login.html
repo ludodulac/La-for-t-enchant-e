@@ -46,6 +46,9 @@
   <script>
     const message = document.getElementById('login-message');
     const button = document.getElementById('btn-login');
+    const params = new URLSearchParams(location.search);
+    const requestedNext = params.get('next');
+    const nextPage = ['admin.html', 'wikignose-admin.html'].includes(requestedNext) ? requestedNext : 'admin.html';
 
     function showMessage(text, type) {
       message.textContent = text;
@@ -59,7 +62,7 @@
 
     getSession().then(async session => {
       if (!session) return;
-      if (await isAuthorizedAdmin()) location.replace('admin.html');
+      if (await isAuthorizedAdmin()) location.replace(nextPage);
       else await dbClient.auth.signOut();
     });
 
@@ -90,7 +93,7 @@
           return;
         }
         showMessage('Connexion réussie.', 'success');
-        location.replace('admin.html');
+        location.replace(nextPage);
       } catch (error) {
         showMessage(error?.message || 'Connexion impossible.', 'error');
       } finally {
