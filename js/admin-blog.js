@@ -6,7 +6,9 @@ let articles   = [];
 let quillNew   = null;
 let quillEdit  = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const session = await (window.adminSessionPromise || requireAuth());
+  if (!session) return;
   quillNew  = initQuill('#quill-editor');
   quillEdit = initQuill('#quill-editor-edit');
   loadArticles();
@@ -44,7 +46,6 @@ function handleLinkInsert(quill) {
   const range = quill.getSelection();
   let url = prompt('URL du lien :');
   if (!url) return;
-  // Ajouter https:// si absent
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
   if (range && range.length > 0) {
     quill.format('link', url);
@@ -53,7 +54,6 @@ function handleLinkInsert(quill) {
   }
 }
 
-// ── Upload image inline ──────────────────────────────────────
 function handleImageInsert(quill) {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = 'image/*';
@@ -74,7 +74,6 @@ function handleImageInsert(quill) {
   });
 }
 
-// ── Embed YouTube ────────────────────────────────────────────
 function handleYoutubeInsert(quill) {
   let url = prompt('URL de la vidéo YouTube :');
   if (!url) return;
@@ -101,14 +100,10 @@ function extractYoutubeId(url) {
   return null;
 }
 
-// ── Catégories blog ──────────────────────────────────────────
 let blogCategories = [];
 
 async function loadBlogCategories() {
-  const { data } = await dbClient
-    .from('blog_categories')
-    .select('*')
-    .order('name');
+  const { data } = await dbClient.from('blog_categories').select('*').order('name');
   blogCategories = data ?? [];
   renderBlogCatList();
   updateBlogCatSelects();
@@ -168,7 +163,6 @@ async function deleteBlogCat(id, name) {
   await loadBlogCategories();
 }
 
-// ── Chargement articles ──────────────────────────────────────
 async function loadArticles() {
   const { data } = await dbClient
     .from('articles')
@@ -205,17 +199,14 @@ function renderArticleList() {
       <span class="row-meta">${art.category ?? ''} · ${date}</span>
       <div class="row-actions">
         <button class="btn-sm btn-edit" onclick="openEditArticle(${art.id})">Modifier</button>
-        <button class="btn-sm btn-del"  onclick="deleteArticle(${art.id}, '${escQ(art.cover_path ?? '')}')">Supprimer</button>
+        <button class="btn-sm btn-del" onclick="deleteArticle(${art.id}, '${escQ(art.cover_path ?? '')}')">Supprimer</button>
       </div>
     `;
     list.appendChild(row);
   });
 }
 
-// ── Formulaires ──────────────────────────────────────────────
 function setupBlogForms() {
-
-  // Ajouter catégorie blog
   document.getElementById('form-add-blog-cat')?.addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('new-blog-cat-name').value.trim();
@@ -224,7 +215,6 @@ function setupBlogForms() {
     e.target.reset();
   });
 
-  // Ajouter article
   document.getElementById('form-add-article')?.addEventListener('submit', async e => {
     e.preventDefault();
     const btn = document.getElementById('btn-add-article');
@@ -264,7 +254,6 @@ function setupBlogForms() {
     }
   });
 
-  // Modifier article
   document.getElementById('form-edit-article')?.addEventListener('submit', async e => {
     e.preventDefault();
     const id        = parseInt(document.getElementById('edit-article-id').value, 10);

@@ -1,162 +1,71 @@
-# 🌲 La Forêt Enchantée — Bibliothèque audio jeunesse
+# La Forêt Enchantée
 
-Bibliothèque audio pour enfants, hébergée sur **GitHub Pages** et alimentée par **Supabase**.
+La Forêt Enchantée est une médiathèque personnelle audio construite en HTML, CSS et JavaScript avec Supabase pour les données, l’authentification et le stockage.
 
----
+Le dépôt héberge aussi **Wikignose**, un outil documentaire conséquent mais volontairement séparé de l’expérience jeunesse. Il partage le même dépôt, le même backend Supabase et le même back-office afin d’éviter de maintenir une seconde infrastructure, mais il ne doit pas être présenté comme une rubrique éditoriale de La Forêt Enchantée.
 
-## ✨ Fonctionnalités
+## Surfaces principales
 
-- **Visiteurs** : parcourir les catégories, rechercher une histoire, écouter avec un lecteur audio moderne (play/pause, seek, volume, ±15s)
-- **Administrateur** : ajouter / modifier / supprimer des audios et des catégories, upload des fichiers vers Supabase Storage
-- **Sans compte visiteur** : aucune inscription requise
-- **Responsive** : mobile et ordinateur
+- `index.html` — médiathèque audio jeunesse ;
+- `audio.html?id=…` — fiche et lecteur d’une histoire ;
+- `blog.html` / `article.html` — journal ;
+- `login.html` / `admin.html` — administration commune ;
+- `wikignose.html` — micro-site documentaire annexe, accessible discrètement depuis le bas de la navigation.
 
----
+## Backend commun
 
-## 🗂 Structure des fichiers
+Le projet Supabase de référence est **La forêt enchantée** (`jwyayfkssyagvnablttg`).
 
-```
-foret-enchantee/
-├── index.html           ← Accueil (catégories + recherche)
-├── audio.html           ← Fiche de lecture d'un audio
-├── login.html           ← Connexion administrateur
-├── admin.html           ← Tableau de bord admin
-├── css/
-│   └── style.css        ← Design complet
-├── js/
-│   ├── supabase.js      ← Configuration Supabase ← À MODIFIER
-│   ├── auth.js          ← Authentification
-│   ├── app.js           ← Logique visiteurs
-│   ├── audio.js         ← Lecteur audio
-│   └── admin.js         ← Logique administration
-├── supabase-setup.sql   ← Script SQL à exécuter dans Supabase
-└── README.md
-```
+Il conserve les données historiques de la médiathèque et du blog et héberge désormais aussi le backend Wikignose. Les comptes administrateurs autorisés sont centralisés dans `public.app_admins` et les PDF Wikignose sont stockés dans le bucket privé `wikignose-pdfs`.
 
----
+Les migrations de la fusion sont versionnées dans `supabase/migrations/`.
 
-## 🚀 Installation pas à pas
+## Positionnement de Wikignose
 
-### Étape 1 — Créer un projet Supabase
+Wikignose est un **outil compagnon** et non une fonctionnalité jeunesse. Son implémentation active reste maintenue ici pour mutualiser la sécurité, l’administration et le déploiement, mais son interface publique possède sa propre identité sobre et autonome.
 
-1. Rendez-vous sur [https://supabase.com](https://supabase.com) et créez un compte gratuit.
-2. Cliquez sur **New project**, choisissez un nom et une région proche de la France (ex : `eu-west-1`).
-3. Notez le **mot de passe de base de données** (vous en aurez besoin si vous administrez la BDD directement).
+La page `wikignose.html` est volontairement `noindex` afin de rester un outil trouvable depuis le site par les personnes qui en ont besoin, sans devenir une porte d’entrée publique concurrente à la médiathèque jeunesse.
 
----
+L’Admin Wikignose calcule une empreinte SHA-256 des PDF avant envoi afin de refuser les doublons de contenu, même lorsqu’un fichier a été renommé. La base impose également l’unicité de cette empreinte. Les ouvrages en attente peuvent être retirés depuis le back-office avec nettoyage du PDF privé.
 
-### Étape 2 — Exécuter le script SQL
+La recherche thématique ignore les principaux mots-outils français, réduit les faux positifs dus aux sous-chaînes, valorise les expressions complètes et affiche des niveaux qualitatifs de pertinence plutôt qu’un faux pourcentage de confiance.
 
-1. Dans le tableau de bord Supabase, allez dans **SQL Editor** > **New query**.
-2. Copiez-collez intégralement le contenu du fichier `supabase-setup.sql`.
-3. Cliquez sur **Run** (ou `Ctrl+Entrée`).
+La logique, l’index et les règles d’indexation sont documentés dans [`docs/WIKIGNOSE.md`](docs/WIKIGNOSE.md). L’ancien dépôt `ludodulac/Wikignose` est conservé uniquement comme archive historique.
 
-Vous verrez se créer :
-- Les tables `categories`, `subcategories`, `audios`
-- Les catégories initiales (Contes traditionnels, Contes esséniens…)
-- Les politiques RLS (sécurité)
-- Les buckets Storage `images` et `audios`
+## Sécurité et intégrité des médias
 
-> ⚠️ Si les politiques Storage génèrent une erreur (ex : policy already exists), ignorez ces erreurs — les buckets ont été créés. Vérifiez manuellement dans **Storage** que `images` et `audios` sont bien là et marqués **public**.
+Les visiteurs gardent un accès en lecture aux contenus publics. Les écritures sont réservées aux comptes présents dans `app_admins` via les politiques RLS.
 
----
+Pour les audios, les remplacements suivent l’ordre **upload nouveau → mise à jour SQL → suppression ancien**. Une erreur de base ne doit donc plus supprimer un fichier encore référencé.
 
-### Étape 3 — Récupérer les clés Supabase
+Le blog applique désormais le même principe aux couvertures et aux médias inline : la base est mise à jour avant de supprimer un média ancien, et un nouveau fichier est nettoyé si son écriture SQL échoue.
 
-1. Dans le tableau de bord Supabase, allez dans **Settings** (icône engrenage) > **API**.
-2. Copiez :
-   - **Project URL** (ex : `https://abcdefgh.supabase.co`)
-   - **anon public key** (longue chaîne commençant par `eyJ…`)
+Le rendu public du Journal échappe les métadonnées et filtre le HTML riche avant affichage afin de retirer scripts, handlers d’événements, URL `javascript:` et embeds non autorisés, tout en conservant les liens, images et vidéos YouTube légitimes.
 
----
+Le back-office masque son interface tant que l’autorisation `app_admins` n’est pas validée. Les extensions UX, sécurité Blog et Wikignose ne sont chargées qu’après cette validation ; les politiques RLS restent la protection serveur de référence.
 
-### Étape 4 — Configurer le projet
+## Expérience publique
 
-Ouvrez le fichier `js/supabase.js` et remplacez les deux valeurs :
+La médiathèque, les fiches audio et le Journal partagent désormais la même direction visuelle premium et responsive. Le Journal conserve ses URLs et son modèle de données existants, mais utilise une couche de présentation modernisée dans `css/blog-2026.css`.
 
-```js
-const SUPABASE_URL     = 'https://VOTRE_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'VOTRE_ANON_KEY';
-```
+La médiathèque conserve recherche, filtres, vues grille/liste, mini-player, reprise d’écoute et historique récent. Une couche d’accessibilité améliore aussi la navigation clavier et l’annonce des cartes et états de navigation.
 
-**⚠️ Attention** : la `anon key` est publique par conception (Supabase la rend publique), mais les politiques RLS empêchent les visiteurs d'écrire ou de supprimer des données. Ne partagez jamais votre `service_role key`.
+## Développement
 
----
+Le site reste volontairement léger : pas de framework applicatif ni de dépendance de build obligatoire.
 
-### Étape 5 — Créer le compte administrateur
+Un workflow GitHub Actions vérifie notamment :
 
-1. Dans le tableau de bord Supabase, allez dans **Authentication** > **Users** > **Add user**.
-2. Entrez votre adresse e-mail et un mot de passe fort.
-3. Cliquez sur **Create user**.
+- la syntaxe de tous les fichiers JavaScript ;
+- la présence des surfaces publiques et administratives ;
+- les contrats DOM essentiels du Journal et de la médiathèque ;
+- la présence des migrations Supabase communes ;
+- l’absence de référence active à l’ancien projet Supabase Wikignose ;
+- la séparation produit de Wikignose (`noindex`, accès secondaire, absence d’action principale) ;
+- les garde-fous de déduplication et de suppression de la file Wikignose ;
+- le chargement de la couche d’accessibilité ;
+- l’orchestration du back-office derrière la vérification d’autorisation.
 
-C'est tout. Vous pourrez vous connecter sur `login.html` avec ces identifiants.
+Le workflow utilise une version actuelle de `actions/checkout` compatible avec le runtime Node 24 des runners GitHub Actions.
 
----
-
-### Étape 6 — Publier sur GitHub Pages
-
-#### Option A — Interface GitHub (la plus simple)
-
-1. Créez un nouveau dépôt sur [github.com](https://github.com) (ex : `foret-enchantee`).
-2. Uploadez tous les fichiers du projet (glisser-déposer dans l'interface web).
-3. Allez dans **Settings** > **Pages**.
-4. Sous **Source**, sélectionnez la branche `main` et le dossier `/ (root)`.
-5. Cliquez sur **Save**.
-
-Votre site sera disponible à l'adresse :
-```
-https://VOTRE-NOM-UTILISATEUR.github.io/foret-enchantee/
-```
-
-#### Option B — Via Git en ligne de commande
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/VOTRE-NOM/foret-enchantee.git
-git push -u origin main
-# Puis activer GitHub Pages dans Settings > Pages
-```
-
----
-
-### Étape 7 — Vérification finale
-
-Checklist :
-- [ ] Le site s'affiche sur l'URL GitHub Pages
-- [ ] Les catégories apparaissent sur la page d'accueil
-- [ ] La connexion admin fonctionne sur `/login.html`
-- [ ] L'ajout d'un audio fonctionne (upload + apparition dans la liste)
-- [ ] Le lecteur audio se lit correctement
-
----
-
-## 🎨 Personnalisation
-
-### Changer les couleurs
-Dans `css/style.css`, modifiez les variables CSS en haut du fichier (section `:root`).
-
-### Ajouter une catégorie
-Depuis l'interface admin (`/admin.html`) > onglet **Catégories** > **Ajouter une catégorie**.
-
-### Modifier le titre du site
-Cherchez `La Forêt Enchantée` dans les fichiers HTML et remplacez par votre titre.
-
----
-
-## ❓ Dépannage fréquent
-
-| Problème | Solution |
-|---|---|
-| Les données ne s'affichent pas | Vérifiez `SUPABASE_URL` et `SUPABASE_ANON_KEY` dans `js/supabase.js` |
-| Erreur de connexion admin | Vérifiez que l'utilisateur existe dans Supabase Auth > Users |
-| Les images/sons ne se chargent pas | Vérifiez que les buckets `images` et `audios` sont bien **public** dans Storage |
-| Erreur RLS | Vérifiez que les politiques ont bien été créées via le script SQL |
-| Upload échoue | Vérifiez les politiques Storage pour le rôle `authenticated` |
-
----
-
-## 📄 Licence
-
-Projet libre — à utiliser et adapter librement.
+Les changements de la refonte premium et de l’intégration Wikignose sont préparés dans une branche dédiée avant fusion vers `main`.

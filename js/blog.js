@@ -4,16 +4,76 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
-  if (path.includes('article.html')) {
-    loadArticle();
-  } else {
-    loadBlog();
-  }
+  if (path.includes('article.html')) loadArticle();
+  else loadBlog();
 });
 
-// ── LISTE DES ARTICLES ───────────────────────────────────────
 let allArticles = [];
 let activeFilter = null;
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function safeUrl(value, kind = 'link') {
+  try {
+    const url = new URL(value, window.location.origin);
+    if (kind === 'iframe') {
+      const host = url.hostname.replace(/^www\./, '');
+      return ['youtube.com', 'youtube-nocookie.com'].includes(host) && url.pathname.startsWith('/embed/') ? url.href : null;
+    }
+    if (kind === 'image') return ['http:', 'https:'].includes(url.protocol) ? url.href : null;
+    return ['http:', 'https:', 'mailto:'].includes(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeArticleHtml(html) {
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+
+  template.content.querySelectorAll('script,object,embed,form,input,button,textarea,select,link,meta,style').forEach((el) => el.remove());
+  template.content.querySelectorAll('*').forEach((el) => {
+    [...el.attributes].forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on') || name === 'srcdoc') el.removeAttribute(attr.name);
+    });
+
+    if (el.hasAttribute('href')) {
+      const url = safeUrl(el.getAttribute('href'), 'link');
+      if (url) {
+        el.setAttribute('href', url);
+        if (url.startsWith('http')) el.setAttribute('rel', 'noopener noreferrer');
+      } else el.removeAttribute('href');
+    }
+
+    if (el.tagName === 'IMG') {
+      const url = safeUrl(el.getAttribute('src'), 'image');
+      if (url) {
+        el.setAttribute('src', url);
+        el.setAttribute('loading', 'lazy');
+      } else el.remove();
+    }
+
+    if (el.tagName === 'IFRAME') {
+      const url = safeUrl(el.getAttribute('src'), 'iframe');
+      if (url) {
+        el.setAttribute('src', url);
+        el.setAttribute('loading', 'lazy');
+        el.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+        el.removeAttribute('allowfullscreen');
+      } else el.remove();
+    }
+  });
+
+  return template.innerHTML;
+}
 
 async function loadBlog() {
   const { data, error } = await dbClient
@@ -23,7 +83,7 @@ async function loadBlog() {
     .order('published_at', { ascending: false });
 
   if (error || !data) {
-    document.getElementById('blog-grid').innerHTML = '<p class="empty-msg">Impossible de charger le blog.</p>';
+    document.getElementById('blog-grid').innerHTML = '<p class="empty-msg">Impossible de charger le journal.</p>';
     return;
   }
 
@@ -35,22 +95,17 @@ async function loadBlog() {
 function renderFilters() {
   const wrap = document.getElementById('blog-filters');
   if (!wrap) return;
-
-  // Extraire catégories uniques
-  const cats = [...new Set(allArticles.map(a => a.category).filter(Boolean))];
-  if (cats.length === 0) return;
-
+  const cats = [...new Set(allArticles.map((a) => a.category).filter(Boolean))];
   wrap.innerHTML = '';
+  if (cats.length === 0) return;
 
   const all = document.createElement('button');
   all.className = 'filter-btn active';
   all.textContent = 'Tous';
-  all.addEventListener('click', () => {
-    setFilter(null, all);
-  });
+  all.addEventListener('click', () => setFilter(null, all));
   wrap.appendChild(all);
 
-  cats.forEach(cat => {
+  cats.forEach((cat) => {
     const btn = document.createElement('button');
     btn.className = 'filter-btn';
     btn.textContent = cat;
@@ -60,31 +115,31 @@ function renderFilters() {
 }
 
 function setFilter(cat, btn) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('active'));
   btn.classList.add('active');
   activeFilter = cat;
-  const filtered = cat ? allArticles.filter(a => a.category === cat) : allArticles;
-  renderGrid(filtered);
+  renderGrid(cat ? allArticles.filter((a) => a.category === cat) : allArticles);
 }
 
 function renderGrid(articles) {
   const grid = document.getElementById('blog-grid');
   grid.innerHTML = '';
-
   if (articles.length === 0) {
-    grid.innerHTML = '<p class="empty-msg">Aucun article pour le moment… 🌱</p>';
+    grid.innerHTML = '<p class="empty-msg">Aucun article pour le moment.</p>';
     return;
   }
 
   articles.forEach((article, i) => {
-    const card = document.createElement('div');
+    const card = document.createElement('article');
     card.className = 'blog-card';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'link');
     card.style.animationDelay = `${i * 0.05}s`;
 
-    const imgHtml = article.cover_path
-      ? `<div class="blog-card-cover" style="background-image:url('${getPublicUrl('blog-images', article.cover_path)}')"></div>`
-      : `<div class="blog-card-cover blog-card-cover--empty">📖</div>`;
-
+    const coverUrl = article.cover_path ? getPublicUrl('blog-images', article.cover_path) : null;
+    const imgHtml = coverUrl
+      ? '<div class="blog-card-cover"></div>'
+      : '<div class="blog-card-cover blog-card-cover--empty" aria-hidden="true">✦</div>';
     const date = article.published_at
       ? new Date(article.published_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
       : '';
@@ -92,23 +147,25 @@ function renderGrid(articles) {
     card.innerHTML = `
       ${imgHtml}
       <div class="blog-card-body">
-        ${article.category ? `<span class="blog-tag">${article.category}</span>` : ''}
-        <h2 class="blog-card-title">${article.title}</h2>
-        ${article.excerpt ? `<p class="blog-card-excerpt">${article.excerpt}</p>` : ''}
+        ${article.category ? `<span class="blog-tag">${escapeHtml(article.category)}</span>` : ''}
+        <h2 class="blog-card-title">${escapeHtml(article.title)}</h2>
+        ${article.excerpt ? `<p class="blog-card-excerpt">${escapeHtml(article.excerpt)}</p>` : ''}
         <div class="blog-card-meta">
-          ${date ? `<span>📅 ${date}</span>` : ''}
+          ${date ? `<span>${escapeHtml(date)}</span>` : ''}
           <span class="blog-read-more">Lire →</span>
         </div>
-      </div>
-    `;
-    card.addEventListener('click', () => {
-      window.location.href = `article.html?id=${article.id}`;
+      </div>`;
+
+    if (coverUrl) card.querySelector('.blog-card-cover').style.backgroundImage = `url(${JSON.stringify(coverUrl)})`;
+    const open = () => { window.location.href = `article.html?id=${encodeURIComponent(article.id)}`; };
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
     });
     grid.appendChild(card);
   });
 }
 
-// ── ARTICLE INDIVIDUEL ───────────────────────────────────────
 async function loadArticle() {
   const id = new URLSearchParams(window.location.search).get('id');
   if (!id) { window.location.href = 'blog.html'; return; }
@@ -121,11 +178,10 @@ async function loadArticle() {
     .single();
 
   if (error || !article) {
-    document.getElementById('article-content').innerHTML = '<p class="empty-msg">Article introuvable. 😢</p>';
+    document.getElementById('article-content').innerHTML = '<p class="empty-msg">Article introuvable.</p>';
     return;
   }
 
-  // Titre dans le breadcrumb
   const bcTitle = document.getElementById('article-bc-title');
   if (bcTitle) bcTitle.textContent = article.title;
   document.title = article.title + ' — La Forêt Enchantée';
@@ -133,18 +189,17 @@ async function loadArticle() {
   const date = article.published_at
     ? new Date(article.published_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
+  const coverUrl = article.cover_path ? getPublicUrl('blog-images', article.cover_path) : null;
+  const coverHtml = coverUrl ? '<div class="article-cover"></div>' : '';
 
-  const coverHtml = article.cover_path
-    ? `<div class="article-cover" style="background-image:url('${getPublicUrl('blog-images', article.cover_path)}')"></div>`
-    : '';
-
-  document.getElementById('article-content').innerHTML = `
+  const container = document.getElementById('article-content');
+  container.innerHTML = `
     ${coverHtml}
     <div class="article-header">
-      ${article.category ? `<span class="blog-tag">${article.category}</span>` : ''}
-      <h1 class="article-title">${article.title}</h1>
-      ${date ? `<p class="article-date">📅 ${date}</p>` : ''}
+      ${article.category ? `<span class="blog-tag">${escapeHtml(article.category)}</span>` : ''}
+      <h1 class="article-title">${escapeHtml(article.title)}</h1>
+      ${date ? `<p class="article-date">${escapeHtml(date)}</p>` : ''}
     </div>
-    <div class="article-body">${article.content}</div>
-  `;
+    <div class="article-body">${sanitizeArticleHtml(article.content)}</div>`;
+  if (coverUrl) container.querySelector('.article-cover').style.backgroundImage = `url(${JSON.stringify(coverUrl)})`;
 }

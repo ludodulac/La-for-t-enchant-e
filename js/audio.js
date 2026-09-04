@@ -1,12 +1,44 @@
-// ============================================================
-// audio.js — Fiche et lecteur audio
-// ============================================================
+const AUDIO_STORAGE = {
+  progress: 'forestAudioProgress',
+  recent: 'forestRecentAudios'
+};
+let activeAudioId = null;
+
+function readLocalJson(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+function writeLocalJson(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) { console.warn('Stockage local indisponible', error); }
+}
+function recordRecentAudio(id) {
+  const current = readLocalJson(AUDIO_STORAGE.recent, []);
+  const next = [String(id), ...current.filter(existing => String(existing) !== String(id))].slice(0, 30);
+  writeLocalJson(AUDIO_STORAGE.recent, next);
+}
+function storedProgress(id) {
+  return readLocalJson(AUDIO_STORAGE.progress, {})[String(id)] || null;
+}
+function saveProgress(id, currentTime, duration, completed = false) {
+  if (!id || !Number.isFinite(currentTime)) return;
+  const map = readLocalJson(AUDIO_STORAGE.progress, {});
+  if (completed || (duration && currentTime >= duration - 5)) delete map[String(id)];
+  else map[String(id)] = { time: currentTime, duration: Number(duration || 0), updatedAt: Date.now() };
+  writeLocalJson(AUDIO_STORAGE.progress, map);
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const params = new URLSearchParams(window.location.search);
-  const id     = params.get('id');
+  document.getElementById('back-button').addEventListener('click', () => {
+    if (document.referrer && document.referrer.includes(location.hostname)) history.back();
+    else location.href = 'index.html';
+  });
 
-  if (!id) { goBack(); return; }
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) return showError('Aucun audio sélectionné.');
 
   const { data: audio, error } = await dbClient
     .from('audios')
@@ -14,176 +46,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     .eq('id', id)
     .single();
 
-  if (error || !audio) {
-    document.getElementById('player-container').innerHTML =
-      '<p class="empty-msg">Cette histoire est introuvable. 😢</p>';
-    return;
-  }
-
-  renderAudioPage(audio);
+  if (error || !audio) return showError('Cette histoire est introuvable.');
+  activeAudioId = audio.id;
+  renderAudio(audio);
 });
 
-// ── Rendu de la fiche ────────────────────────────────────────
-function renderAudioPage(audio) {
-  const imgUrl = audio.image_path
-    ? getPublicUrl('images', audio.image_path)
-    : 'assets/default-cover.svg';
-
-  const audioUrl = audio.audio_path
-    ? getPublicUrl('audios', audio.audio_path)
-    : null;
-
-  // Breadcrumb dynamique selon contexte de navigation
-  const ctx = JSON.parse(sessionStorage.getItem('navContext') ?? '{}');
-  document.getElementById('breadcrumb').innerHTML = buildBreadcrumb(audio, ctx);
-
-  // Couverture
-  document.getElementById('audio-cover').style.backgroundImage = `url('${imgUrl}')`;
-
-  // Infos
-  document.getElementById('audio-title').textContent = audio.title;
-  document.getElementById('audio-cat').textContent   =
-    [audio.categories?.name, audio.subcategories?.name].filter(Boolean).join(' › ');
-
-  if (audio.description) {
-    document.getElementById('audio-desc').textContent = audio.description;
-  }
-
-  // Lecteur
-  if (audioUrl) {
-    buildPlayer(audioUrl, audio.duration);
-  } else {
-    document.getElementById('player-zone').innerHTML =
-      '<p class="empty-msg">Fichier audio non disponible.</p>';
-  }
+function renderAudio(item) {
+  const cover = item.image_path ? getPublicUrl('images', item.image_path) : '';
+  const src = item.audio_path ? getPublicUrl('audios', item.audio_path) : '';
+  const art = document.getElementById('detail-art');
+  art.innerHTML = cover ? `<img src="${escapeHtml(cover)}" alt="Couverture de ${escapeHtml(item.title)}">` : '<div class="cover-placeholder">⌁</div>';
+  document.getElementById('audio-title').textContent = item.title;
+  document.title = `${item.title} — La Forêt Enchantée`;
+  document.getElementById('audio-cat').textContent = [item.categories?.name, item.subcategories?.name].filter(Boolean).join(' · ') || 'La Forêt Enchantée';
+  document.getElementById('audio-desc').textContent = item.description || 'Installe-toi confortablement et laisse l’histoire commencer.';
+  if (!src) return showError('Le fichier audio n’est pas disponible.');
+  buildPlayer(src, item.duration, item.id);
 }
 
-// ── Lecteur audio custom ─────────────────────────────────────
-function buildPlayer(src, durationHint) {
+function buildPlayer(src, durationHint, id) {
   const zone = document.getElementById('player-zone');
+  zone.innerHTML = `<div class="full-player">
+    <audio id="audio-element" preload="metadata"></audio>
+    <div class="full-progress"><span id="time-current">0:00</span><input class="range" id="progress-bar" type="range" min="0" max="100" step="0.1" value="0" aria-label="Progression"><span id="time-total">${formatDuration(durationHint)}</span></div>
+    <div class="full-transport"><button id="rewind" type="button" aria-label="Reculer de 15 secondes">−15</button><button class="play" id="play" type="button" aria-label="Lecture">▶</button><button id="forward" type="button" aria-label="Avancer de 15 secondes">+15</button></div>
+    <div class="full-tools"><label>Vitesse <select class="speed-select" id="speed" aria-label="Vitesse de lecture"><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label><label>Volume <input class="range" id="volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume"></label></div>
+  </div>`;
 
-  // Élément audio natif (caché)
-  const audio = document.createElement('audio');
-  audio.src   = src;
-  audio.preload = 'metadata';
-  zone.appendChild(audio);
+  const audio = document.getElementById('audio-element');
+  const play = document.getElementById('play');
+  const progress = document.getElementById('progress-bar');
+  const current = document.getElementById('time-current');
+  const total = document.getElementById('time-total');
+  let lastSavedSecond = -1;
+  audio.src = src;
 
-  // UI du lecteur
-  zone.insertAdjacentHTML('beforeend', `
-    <div class="player">
-      <div class="player-progress-wrap">
-        <span class="player-time" id="time-current">0:00</span>
-        <input type="range" id="progress-bar" class="player-bar" min="0" max="100" value="0" step="0.1">
-        <span class="player-time" id="time-total">${durationHint ? formatDuration(durationHint) : '–:––'}</span>
-      </div>
-      <div class="player-controls">
-        <button class="ctrl-btn" id="btn-rewind" title="Reculer 15s">⏪</button>
-        <button class="ctrl-btn ctrl-play" id="btn-play" title="Lecture / Pause">▶</button>
-        <button class="ctrl-btn" id="btn-forward" title="Avancer 15s">⏩</button>
-      </div>
-      <div class="player-volume">
-        <span>🔊</span>
-        <input type="range" id="volume-bar" class="player-bar" min="0" max="1" step="0.01" value="1">
-      </div>
-    </div>
-  `);
+  const sync = () => {
+    const duration = Number.isFinite(audio.duration) ? audio.duration : Number(durationHint || 0);
+    progress.max = duration || 100;
+    progress.value = audio.currentTime || 0;
+    current.textContent = formatDuration(audio.currentTime);
+    total.textContent = formatDuration(duration);
+    play.textContent = audio.paused ? '▶' : 'Ⅱ';
+    play.setAttribute('aria-label', audio.paused ? 'Lecture' : 'Pause');
+  };
+  const persist = force => {
+    const second = Math.floor(audio.currentTime || 0);
+    if (!force && second === lastSavedSecond) return;
+    lastSavedSecond = second;
+    saveProgress(id, audio.currentTime || 0, Number.isFinite(audio.duration) ? audio.duration : Number(durationHint || 0));
+  };
 
-  const bar     = document.getElementById('progress-bar');
-  const volBar  = document.getElementById('volume-bar');
-  const btnPlay = document.getElementById('btn-play');
-  const timeCur = document.getElementById('time-current');
-  const timeEnd = document.getElementById('time-total');
-
-  // Métadonnées chargées
   audio.addEventListener('loadedmetadata', () => {
-    bar.max  = audio.duration;
-    timeEnd.textContent = formatDuration(Math.floor(audio.duration));
+    const saved = storedProgress(id);
+    if (saved?.time > 3 && saved.time < audio.duration - 3) audio.currentTime = saved.time;
+    sync();
   });
+  audio.addEventListener('timeupdate', () => { sync(); persist(false); });
+  audio.addEventListener('play', () => { recordRecentAudio(id); sync(); });
+  audio.addEventListener('pause', () => { persist(true); sync(); });
+  audio.addEventListener('ended', () => { saveProgress(id, audio.currentTime || 0, audio.duration || 0, true); sync(); });
+  window.addEventListener('pagehide', () => persist(true));
 
-  // Progression
-  audio.addEventListener('timeupdate', () => {
-    bar.value = audio.currentTime;
-    timeCur.textContent = formatDuration(Math.floor(audio.currentTime));
+  play.addEventListener('click', () => {
+    if (audio.paused) audio.play().catch(error => console.error('Lecture impossible', error));
+    else audio.pause();
   });
-
-  // Fin de lecture
-  audio.addEventListener('ended', () => {
-    btnPlay.textContent = '▶';
-    bar.value = 0;
-    audio.currentTime = 0;
-  });
-
-  // Bouton play/pause
-  btnPlay.addEventListener('click', () => {
-    if (audio.paused) {
-      audio.play();
-      btnPlay.textContent = '⏸';
-    } else {
-      audio.pause();
-      btnPlay.textContent = '▶';
-    }
-  });
-
-  // Barre de progression (seek)
-  bar.addEventListener('input', () => {
-    audio.currentTime = bar.value;
-  });
-
-  // Volume
-  volBar.addEventListener('input', () => {
-    audio.volume = volBar.value;
-  });
-
-  // Reculer 15s
-  document.getElementById('btn-rewind').addEventListener('click', () => {
-    audio.currentTime = Math.max(0, audio.currentTime - 15);
-  });
-
-  // Avancer 15s
-  document.getElementById('btn-forward').addEventListener('click', () => {
-    audio.currentTime = Math.min(audio.duration, audio.currentTime + 15);
-  });
+  document.getElementById('rewind').addEventListener('click', () => { audio.currentTime = Math.max(0, audio.currentTime - 15); });
+  document.getElementById('forward').addEventListener('click', () => { audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + 15); });
+  progress.addEventListener('input', () => { audio.currentTime = Number(progress.value); });
+  document.getElementById('volume').addEventListener('input', event => { audio.volume = Number(event.target.value); });
+  document.getElementById('speed').addEventListener('change', event => { audio.playbackRate = Number(event.target.value); });
 }
 
-// ── Fil d'Ariane ─────────────────────────────────────────────
-function buildBreadcrumb(audio, ctx) {
-  let html = `<span class="bc-item bc-link" onclick="goHome()">🏠 Accueil</span>`;
-
-  if (ctx.view === 'category' || ctx.view === 'subcategory') {
-    html += `<span class="bc-sep">›</span>
-             <span class="bc-item bc-link" onclick="goBack()">${audio.categories?.name ?? 'Catégorie'}</span>`;
-  }
-  if (ctx.view === 'subcategory' && audio.subcategories?.name) {
-    html += `<span class="bc-sep">›</span>
-             <span class="bc-item bc-link" onclick="goBack()">${audio.subcategories.name}</span>`;
-  }
-  if (ctx.view === 'search') {
-    html += `<span class="bc-sep">›</span>
-             <span class="bc-item bc-link" onclick="goBack()">Recherche</span>`;
-  }
-
-  html += `<span class="bc-sep">›</span>
-           <span class="bc-item active">${audio.title}</span>`;
-  return html;
+function showError(message) {
+  document.getElementById('player-zone').innerHTML = `<div class="status-message">${escapeHtml(message)}</div>`;
 }
 
-// ── Navigation ────────────────────────────────────────────────
-function goBack() {
-  if (document.referrer && document.referrer.includes(window.location.hostname)) {
-    history.back();
-  } else {
-    window.location.href = 'index.html';
-  }
-}
-
-function goHome() {
-  window.location.href = 'index.html';
-}
-
-// ── Utilitaires ──────────────────────────────────────────────
 function formatDuration(seconds) {
-  if (!seconds) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value < 0) return '—';
+  const whole = Math.floor(value);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
+
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));
 }

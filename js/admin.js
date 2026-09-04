@@ -2,44 +2,47 @@
 // admin.js — Tableau de bord administrateur
 // ============================================================
 
-let categories    = [];
+let categories = [];
 let subcategories = [];
-let audios        = [];
+let audios = [];
 
-// ── Initialisation ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  await requireAuth();
+  const session = await requireAuth();
+  if (!session) return;
   await refreshData();
   setupTabs();
   setupForms();
+  setupEditForm();
   renderAll();
 });
 
-// ── Chargement des données ───────────────────────────────────
 async function refreshData() {
   const [cats, subs, auds] = await Promise.all([
     dbClient.from('categories').select('*').order('name'),
     dbClient.from('subcategories').select('*').order('name'),
     dbClient.from('audios').select('*').order('created_at', { ascending: false }),
   ]);
-  categories    = cats.data  ?? [];
-  subcategories = subs.data  ?? [];
-  audios        = auds.data  ?? [];
+  const error = cats.error || subs.error || auds.error;
+  if (error) {
+    showNotif('Erreur de chargement : ' + error.message, 'error');
+    return;
+  }
+  categories = cats.data ?? [];
+  subcategories = subs.data ?? [];
+  audios = auds.data ?? [];
 }
 
-// ── Onglets ──────────────────────────────────────────────────
 function setupTabs() {
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById(btn.dataset.tab).classList.add('active');
+      document.getElementById(btn.dataset.tab)?.classList.add('active');
     });
   });
 }
 
-// ── Rendu global ─────────────────────────────────────────────
 function renderAll() {
   renderCatList();
   renderSubList();
@@ -47,31 +50,39 @@ function renderAll() {
   populateCatSelects();
 }
 
-// ── CATÉGORIES ───────────────────────────────────────────────
+function sameId(a, b) {
+  return String(a ?? '') === String(b ?? '');
+}
+
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>'"]/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
+  }[char]));
+}
+
 function renderCatList() {
   const list = document.getElementById('cat-list');
   if (!list) return;
-  list.innerHTML = '';
-
-  if (categories.length === 0) {
+  if (!categories.length) {
     list.innerHTML = '<p class="empty-msg">Aucune catégorie.</p>';
     return;
   }
-
-  categories.forEach(cat => {
-    const count = audios.filter(a => a.category_id === cat.id).length;
-    const row   = document.createElement('div');
-    row.className = 'admin-row';
-    row.innerHTML = `
-      <span class="row-name">${cat.name}</span>
+  list.innerHTML = categories.map(cat => {
+    const count = audios.filter(a => sameId(a.category_id, cat.id)).length;
+    return `<div class="admin-row">
+      <span class="row-name">${escapeHtml(cat.name)}</span>
       <span class="row-meta">${count} histoire${count !== 1 ? 's' : ''}</span>
       <div class="row-actions">
-        <button class="btn-sm btn-edit" onclick="editCat(${cat.id}, '${escQ(cat.name)}')">Modifier</button>
-        <button class="btn-sm btn-del"  onclick="deleteCat(${cat.id})">Supprimer</button>
+        <button class="btn-sm btn-edit" type="button" data-edit-cat="${escapeHtml(cat.id)}">Modifier</button>
+        <button class="btn-sm btn-del" type="button" data-delete-cat="${escapeHtml(cat.id)}">Supprimer</button>
       </div>
-    `;
-    list.appendChild(row);
-  });
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-edit-cat]').forEach(btn => btn.addEventListener('click', () => {
+    const cat = categories.find(item => sameId(item.id, btn.dataset.editCat));
+    if (cat) editCat(cat.id, cat.name);
+  }));
+  list.querySelectorAll('[data-delete-cat]').forEach(btn => btn.addEventListener('click', () => deleteCat(btn.dataset.deleteCat)));
 }
 
 async function addCategory(name) {
@@ -93,7 +104,11 @@ async function editCat(id, oldName) {
 }
 
 async function deleteCat(id) {
-  if (!confirm('Supprimer cette catégorie et tous ses audios ?')) return;
+  const attached = audios.filter(audio => sameId(audio.category_id, id)).length;
+  const message = attached
+    ? `Cette catégorie contient ${attached} audio${attached > 1 ? 's' : ''}. La supprimer peut échouer tant que ces audios y sont liés. Continuer ?`
+    : 'Supprimer cette catégorie ?';
+  if (!confirm(message)) return;
   const { error } = await dbClient.from('categories').delete().eq('id', id);
   if (error) return showNotif('Erreur : ' + error.message, 'error');
   showNotif('Catégorie supprimée');
@@ -101,32 +116,30 @@ async function deleteCat(id) {
   renderAll();
 }
 
-// ── SOUS-CATÉGORIES ──────────────────────────────────────────
 function renderSubList() {
   const list = document.getElementById('sub-list-admin');
   if (!list) return;
-  list.innerHTML = '';
-
-  if (subcategories.length === 0) {
+  if (!subcategories.length) {
     list.innerHTML = '<p class="empty-msg">Aucune sous-catégorie.</p>';
     return;
   }
-
-  subcategories.forEach(sub => {
-    const cat   = categories.find(c => c.id === sub.category_id);
-    const count = audios.filter(a => a.subcategory_id === sub.id).length;
-    const row   = document.createElement('div');
-    row.className = 'admin-row';
-    row.innerHTML = `
-      <span class="row-name">${sub.name}</span>
-      <span class="row-meta">${cat?.name ?? '—'} · ${count} histoire${count !== 1 ? 's' : ''}</span>
+  list.innerHTML = subcategories.map(sub => {
+    const cat = categories.find(c => sameId(c.id, sub.category_id));
+    const count = audios.filter(a => sameId(a.subcategory_id, sub.id)).length;
+    return `<div class="admin-row">
+      <span class="row-name">${escapeHtml(sub.name)}</span>
+      <span class="row-meta">${escapeHtml(cat?.name ?? '—')} · ${count} histoire${count !== 1 ? 's' : ''}</span>
       <div class="row-actions">
-        <button class="btn-sm btn-edit" onclick="editSub(${sub.id}, '${escQ(sub.name)}', ${sub.category_id})">Modifier</button>
-        <button class="btn-sm btn-del"  onclick="deleteSub(${sub.id})">Supprimer</button>
+        <button class="btn-sm btn-edit" type="button" data-edit-sub="${escapeHtml(sub.id)}">Modifier</button>
+        <button class="btn-sm btn-del" type="button" data-delete-sub="${escapeHtml(sub.id)}">Supprimer</button>
       </div>
-    `;
-    list.appendChild(row);
-  });
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-edit-sub]').forEach(btn => btn.addEventListener('click', () => {
+    const sub = subcategories.find(item => sameId(item.id, btn.dataset.editSub));
+    if (sub) editSub(sub.id, sub.name);
+  }));
+  list.querySelectorAll('[data-delete-sub]').forEach(btn => btn.addEventListener('click', () => deleteSub(btn.dataset.deleteSub)));
 }
 
 async function addSubcategory(name, categoryId) {
@@ -137,7 +150,7 @@ async function addSubcategory(name, categoryId) {
   renderAll();
 }
 
-async function editSub(id, oldName, catId) {
+async function editSub(id, oldName) {
   const name = prompt('Nouveau nom :', oldName);
   if (!name || name.trim() === oldName) return;
   const { error } = await dbClient.from('subcategories').update({ name: name.trim() }).eq('id', id);
@@ -156,70 +169,58 @@ async function deleteSub(id) {
   renderAll();
 }
 
-// ── AUDIOS ───────────────────────────────────────────────────
 function renderAudioList() {
   const list = document.getElementById('audio-list-admin');
   if (!list) return;
-  list.innerHTML = '';
-
-  if (audios.length === 0) {
+  if (!audios.length) {
     list.innerHTML = '<p class="empty-msg">Aucun audio.</p>';
     return;
   }
-
-  audios.forEach(audio => {
-    const cat = categories.find(c => c.id === audio.category_id);
-    const sub = subcategories.find(s => s.id === audio.subcategory_id);
-    const row = document.createElement('div');
-    row.className = 'admin-row';
-    row.innerHTML = `
-      <span class="row-name">${audio.title}</span>
-      <span class="row-meta">${cat?.name ?? '—'}${sub ? ' › ' + sub.name : ''}</span>
+  list.innerHTML = audios.map(audio => {
+    const cat = categories.find(c => sameId(c.id, audio.category_id));
+    const sub = subcategories.find(s => sameId(s.id, audio.subcategory_id));
+    return `<div class="admin-row">
+      <span class="row-name">${escapeHtml(audio.title)}</span>
+      <span class="row-meta">${escapeHtml(cat?.name ?? '—')}${sub ? ' › ' + escapeHtml(sub.name) : ''}</span>
       <div class="row-actions">
-        <button class="btn-sm btn-edit" onclick="openEditAudio(${audio.id})">Modifier</button>
-        <button class="btn-sm btn-del"  onclick="deleteAudio(${audio.id}, '${escQ(audio.image_path)}', '${escQ(audio.audio_path)}')">Supprimer</button>
+        <button class="btn-sm btn-edit" type="button" data-edit-audio="${escapeHtml(audio.id)}">Modifier</button>
+        <button class="btn-sm btn-del" type="button" data-delete-audio="${escapeHtml(audio.id)}">Supprimer</button>
       </div>
-    `;
-    list.appendChild(row);
-  });
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-edit-audio]').forEach(btn => btn.addEventListener('click', () => openEditAudio(btn.dataset.editAudio)));
+  list.querySelectorAll('[data-delete-audio]').forEach(btn => btn.addEventListener('click', () => {
+    const audio = audios.find(item => sameId(item.id, btn.dataset.deleteAudio));
+    if (audio) deleteAudio(audio.id, audio.image_path, audio.audio_path);
+  }));
 }
 
-// ── Formulaires ──────────────────────────────────────────────
 function setupForms() {
-  // — Ajouter catégorie
   document.getElementById('form-add-cat')?.addEventListener('submit', async e => {
     e.preventDefault();
-    const name = document.getElementById('new-cat-name').value.trim();
+    const input = document.getElementById('new-cat-name');
+    const name = input.value.trim();
     if (!name) return;
     await addCategory(name);
     e.target.reset();
   });
 
-  // — Ajouter sous-catégorie
   document.getElementById('form-add-sub')?.addEventListener('submit', async e => {
     e.preventDefault();
-    const name  = document.getElementById('new-sub-name').value.trim();
-    const catId = parseInt(document.getElementById('new-sub-cat').value, 10);
+    const name = document.getElementById('new-sub-name').value.trim();
+    const catId = document.getElementById('new-sub-cat').value || null;
     if (!name || !catId) return;
     await addSubcategory(name, catId);
     e.target.reset();
   });
 
-  // — Ajouter audio
   document.getElementById('form-add-audio')?.addEventListener('submit', handleAddAudio);
-
-  // — Filtre sous-catégorie selon catégorie choisie
-  document.getElementById('audio-cat')?.addEventListener('change', e => {
-    updateSubSelect('audio-sub', parseInt(e.target.value, 10));
-  });
-  document.getElementById('edit-audio-cat')?.addEventListener('change', e => {
-    updateSubSelect('edit-audio-sub', parseInt(e.target.value, 10));
-  });
+  document.getElementById('audio-cat')?.addEventListener('change', e => updateSubSelect('audio-sub', e.target.value || null));
+  document.getElementById('edit-audio-cat')?.addEventListener('change', e => updateSubSelect('edit-audio-sub', e.target.value || null));
 }
 
 function populateCatSelects() {
-  const selectors = ['new-sub-cat', 'audio-cat', 'edit-audio-cat'];
-  selectors.forEach(id => {
+  ['new-sub-cat', 'audio-cat', 'edit-audio-cat'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
     const val = sel.value;
@@ -228,13 +229,12 @@ function populateCatSelects() {
       const opt = document.createElement('option');
       opt.value = c.id;
       opt.textContent = c.name;
-      if (c.id == val) opt.selected = true;
+      if (sameId(c.id, val)) opt.selected = true;
       sel.appendChild(opt);
     });
   });
-
-  updateSubSelect('audio-sub', null);
-  updateSubSelect('edit-audio-sub', null);
+  updateSubSelect('audio-sub', document.getElementById('audio-cat')?.value || null);
+  updateSubSelect('edit-audio-sub', document.getElementById('edit-audio-cat')?.value || null);
 }
 
 function updateSubSelect(selId, catId) {
@@ -243,201 +243,215 @@ function updateSubSelect(selId, catId) {
   const val = sel.value;
   sel.innerHTML = '<option value="">— Sous-catégorie (optionnel) —</option>';
   subcategories
-    .filter(s => !catId || s.category_id === catId)
+    .filter(s => !catId || sameId(s.category_id, catId))
     .forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.id;
       opt.textContent = s.name;
-      if (s.id == val) opt.selected = true;
+      if (sameId(s.id, val)) opt.selected = true;
       sel.appendChild(opt);
     });
 }
 
-// ── Ajout audio avec upload ──────────────────────────────────
+async function uploadFile(bucket, path, file) {
+  const { error } = await dbClient.storage.from(bucket).upload(path, file, { upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+async function removeFiles(entries) {
+  const grouped = entries.filter(item => item?.path).reduce((map, item) => {
+    if (!map[item.bucket]) map[item.bucket] = [];
+    map[item.bucket].push(item.path);
+    return map;
+  }, {});
+  const results = await Promise.allSettled(Object.entries(grouped).map(([bucket, paths]) =>
+    dbClient.storage.from(bucket).remove(paths)
+  ));
+  const failed = results.some(result => result.status === 'rejected' || result.value?.error);
+  if (failed) console.warn('Certains fichiers Storage n’ont pas pu être nettoyés.', results);
+  return !failed;
+}
+
+function makeStoragePath(title, filename) {
+  const ext = String(filename || '').split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+  return `${Date.now()}-${crypto.randomUUID()}-${slugify(title)}.${ext}`;
+}
+
 async function handleAddAudio(e) {
   e.preventDefault();
   const btn = document.getElementById('btn-add-audio');
   btn.disabled = true;
   btn.textContent = 'Envoi en cours…';
+  const uploaded = [];
 
   try {
-    const title       = document.getElementById('audio-title-in').value.trim();
+    const title = document.getElementById('audio-title-in').value.trim();
     const description = document.getElementById('audio-desc-in').value.trim();
-    const catId       = parseInt(document.getElementById('audio-cat').value, 10) || null;
-    const subId       = parseInt(document.getElementById('audio-sub').value, 10) || null;
-    const imgFile     = document.getElementById('audio-img').files[0];
-    const audFile     = document.getElementById('audio-file').files[0];
+    const catId = document.getElementById('audio-cat').value || null;
+    const subId = document.getElementById('audio-sub').value || null;
+    const imgFile = document.getElementById('audio-img').files[0];
+    const audFile = document.getElementById('audio-file').files[0];
 
-    if (!title || !audFile) {
-      showNotif('Titre et fichier audio requis.', 'error');
-      return;
-    }
+    if (!title || !audFile) throw new Error('Titre et fichier audio requis.');
 
-    // Upload image
     let imagePath = null;
     if (imgFile) {
-      const ext  = imgFile.name.split('.').pop();
-      const path = `${Date.now()}-${slugify(title)}.${ext}`;
-      const { error: imgErr } = await dbClient.storage.from('images').upload(path, imgFile);
-      if (imgErr) throw imgErr;
-      imagePath = path;
+      imagePath = makeStoragePath(title, imgFile.name);
+      await uploadFile('images', imagePath, imgFile);
+      uploaded.push({ bucket: 'images', path: imagePath });
     }
 
-    // Upload audio
-    const audExt  = audFile.name.split('.').pop();
-    const audPath = `${Date.now()}-${slugify(title)}.${audExt}`;
-    const { error: audErr } = await dbClient.storage.from('audios').upload(audPath, audFile);
-    if (audErr) throw audErr;
+    const audPath = makeStoragePath(title, audFile.name);
+    await uploadFile('audios', audPath, audFile);
+    uploaded.push({ bucket: 'audios', path: audPath });
 
-    // Durée audio (côté client)
     const duration = await getAudioDuration(audFile);
-
-    // Insertion en base
     const { error: dbErr } = await dbClient.from('audios').insert({
       title,
       description: description || null,
-      category_id:    catId,
+      category_id: catId,
       subcategory_id: subId,
-      image_path:  imagePath,
-      audio_path:  audPath,
-      duration:    Math.floor(duration) || null,
+      image_path: imagePath,
+      audio_path: audPath,
+      duration: Math.floor(duration) || null,
     });
-
     if (dbErr) throw dbErr;
 
+    uploaded.length = 0;
     showNotif('Audio ajouté avec succès ✓');
     e.target.reset();
     await refreshData();
     renderAll();
-
   } catch (err) {
+    if (uploaded.length) await removeFiles(uploaded);
     showNotif('Erreur : ' + (err.message ?? err), 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Ajouter l\'audio';
+    btn.textContent = "Ajouter l'audio";
   }
 }
 
-// ── Modifier audio ───────────────────────────────────────────
 function openEditAudio(id) {
-  const audio = audios.find(a => a.id === id);
+  const audio = audios.find(a => sameId(a.id, id));
   if (!audio) return;
-
   document.getElementById('edit-panel').style.display = 'block';
-  document.getElementById('edit-audio-id').value          = audio.id;
-  document.getElementById('edit-audio-title').value       = audio.title;
-  document.getElementById('edit-audio-desc').value        = audio.description ?? '';
-  document.getElementById('edit-audio-cat').value         = audio.category_id ?? '';
+  document.getElementById('edit-audio-id').value = audio.id;
+  document.getElementById('edit-audio-title').value = audio.title;
+  document.getElementById('edit-audio-desc').value = audio.description ?? '';
+  document.getElementById('edit-audio-cat').value = audio.category_id ?? '';
   updateSubSelect('edit-audio-sub', audio.category_id);
-  document.getElementById('edit-audio-sub').value         = audio.subcategory_id ?? '';
-
+  document.getElementById('edit-audio-sub').value = audio.subcategory_id ?? '';
   document.getElementById('edit-panel').scrollIntoView({ behavior: 'smooth' });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Formulaire de modification
-  document.getElementById('form-edit-audio')?.addEventListener('submit', async e => {
-    e.preventDefault();
-    const id          = parseInt(document.getElementById('edit-audio-id').value, 10);
-    const title       = document.getElementById('edit-audio-title').value.trim();
-    const description = document.getElementById('edit-audio-desc').value.trim();
-    const catId       = parseInt(document.getElementById('edit-audio-cat').value, 10) || null;
-    const subId       = parseInt(document.getElementById('edit-audio-sub').value, 10) || null;
-    const imgFile     = document.getElementById('edit-audio-img').files[0];
-    const audFile     = document.getElementById('edit-audio-file').files[0];
-
-    if (!title) return showNotif('Titre requis.', 'error');
-
-    const audio   = audios.find(a => a.id === id);
-    let imagePath = audio.image_path;
-    let audioPath = audio.audio_path;
-
-    try {
-      // Nouveau fichier image ?
-      if (imgFile) {
-        if (imagePath) await dbClient.storage.from('images').remove([imagePath]);
-        const ext = imgFile.name.split('.').pop();
-        imagePath = `${Date.now()}-${slugify(title)}.${ext}`;
-        const { error } = await dbClient.storage.from('images').upload(imagePath, imgFile);
-        if (error) throw error;
-      }
-
-      // Nouveau fichier audio ?
-      if (audFile) {
-        if (audioPath) await dbClient.storage.from('audios').remove([audioPath]);
-        const ext  = audFile.name.split('.').pop();
-        audioPath  = `${Date.now()}-${slugify(title)}.${ext}`;
-        const { error } = await dbClient.storage.from('audios').upload(audioPath, audFile);
-        if (error) throw error;
-      }
-
-      const { error: dbErr } = await dbClient.from('audios').update({
-        title,
-        description:    description || null,
-        category_id:    catId,
-        subcategory_id: subId,
-        image_path:     imagePath,
-        audio_path:     audioPath,
-      }).eq('id', id);
-
-      if (dbErr) throw dbErr;
-
-      showNotif('Audio modifié ✓');
-      document.getElementById('edit-panel').style.display = 'none';
-      await refreshData();
-      renderAll();
-
-    } catch (err) {
-      showNotif('Erreur : ' + (err.message ?? err), 'error');
-    }
-  });
-
+function setupEditForm() {
+  document.getElementById('form-edit-audio')?.addEventListener('submit', handleEditAudio);
   document.getElementById('btn-cancel-edit')?.addEventListener('click', () => {
     document.getElementById('edit-panel').style.display = 'none';
   });
-});
+}
+
+async function handleEditAudio(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-audio-id').value;
+  const title = document.getElementById('edit-audio-title').value.trim();
+  const description = document.getElementById('edit-audio-desc').value.trim();
+  const catId = document.getElementById('edit-audio-cat').value || null;
+  const subId = document.getElementById('edit-audio-sub').value || null;
+  const imgFile = document.getElementById('edit-audio-img').files[0];
+  const audFile = document.getElementById('edit-audio-file').files[0];
+  if (!title) return showNotif('Titre requis.', 'error');
+
+  const audio = audios.find(a => sameId(a.id, id));
+  if (!audio) return showNotif('Audio introuvable.', 'error');
+
+  const uploaded = [];
+  let imagePath = audio.image_path;
+  let audioPath = audio.audio_path;
+
+  try {
+    if (imgFile) {
+      imagePath = makeStoragePath(title, imgFile.name);
+      await uploadFile('images', imagePath, imgFile);
+      uploaded.push({ bucket: 'images', path: imagePath });
+    }
+    if (audFile) {
+      audioPath = makeStoragePath(title, audFile.name);
+      await uploadFile('audios', audioPath, audFile);
+      uploaded.push({ bucket: 'audios', path: audioPath });
+    }
+
+    const patch = {
+      title,
+      description: description || null,
+      category_id: catId,
+      subcategory_id: subId,
+      image_path: imagePath,
+      audio_path: audioPath,
+    };
+    if (audFile) patch.duration = Math.floor(await getAudioDuration(audFile)) || null;
+
+    const { error: dbErr } = await dbClient.from('audios').update(patch).eq('id', id);
+    if (dbErr) throw dbErr;
+
+    const oldFiles = [];
+    if (imgFile && audio.image_path && audio.image_path !== imagePath) oldFiles.push({ bucket: 'images', path: audio.image_path });
+    if (audFile && audio.audio_path && audio.audio_path !== audioPath) oldFiles.push({ bucket: 'audios', path: audio.audio_path });
+    if (oldFiles.length) {
+      const cleaned = await removeFiles(oldFiles);
+      if (!cleaned) showNotif('Audio modifié, mais un ancien fichier reste à nettoyer.', 'error');
+      else showNotif('Audio modifié ✓');
+    } else {
+      showNotif('Audio modifié ✓');
+    }
+
+    uploaded.length = 0;
+    e.target.reset();
+    document.getElementById('edit-panel').style.display = 'none';
+    await refreshData();
+    renderAll();
+  } catch (err) {
+    if (uploaded.length) await removeFiles(uploaded);
+    showNotif('Erreur : ' + (err.message ?? err), 'error');
+  }
+}
 
 async function deleteAudio(id, imagePath, audioPath) {
   if (!confirm('Supprimer cet audio définitivement ?')) return;
-
-  // Supprimer fichiers storage
-  if (imagePath && imagePath !== 'undefined') await dbClient.storage.from('images').remove([imagePath]);
-  if (audioPath && audioPath !== 'undefined') await dbClient.storage.from('audios').remove([audioPath]);
-
-  // Supprimer en base
   const { error } = await dbClient.from('audios').delete().eq('id', id);
   if (error) return showNotif('Erreur : ' + error.message, 'error');
 
-  showNotif('Audio supprimé');
+  const files = [];
+  if (imagePath && imagePath !== 'undefined') files.push({ bucket: 'images', path: imagePath });
+  if (audioPath && audioPath !== 'undefined') files.push({ bucket: 'audios', path: audioPath });
+  const cleaned = await removeFiles(files);
+  showNotif(cleaned ? 'Audio supprimé' : 'Audio supprimé, mais un fichier Storage reste à nettoyer.', cleaned ? 'success' : 'error');
   await refreshData();
   renderAll();
 }
 
-// ── Déconnexion ──────────────────────────────────────────────
 document.getElementById('btn-logout')?.addEventListener('click', signOut);
 
-// ── Utilitaires ──────────────────────────────────────────────
 function getAudioDuration(file) {
   return new Promise(resolve => {
-    const url  = URL.createObjectURL(file);
-    const el   = new Audio(url);
-    el.addEventListener('loadedmetadata', () => {
+    const url = URL.createObjectURL(file);
+    const el = new Audio(url);
+    const cleanup = value => {
       URL.revokeObjectURL(url);
-      resolve(el.duration);
-    });
-    el.addEventListener('error', () => resolve(0));
+      resolve(value);
+    };
+    el.addEventListener('loadedmetadata', () => cleanup(el.duration), { once: true });
+    el.addEventListener('error', () => cleanup(0), { once: true });
   });
 }
 
 function slugify(str) {
-  return str.toLowerCase()
+  return String(str || 'audio').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .slice(0, 40);
-}
-
-function escQ(str) {
-  return (str ?? '').replace(/'/g, "\\'");
+    .replace(/^-|-$/g, '')
+    .slice(0, 40) || 'audio';
 }
 
 function showNotif(msg, type = 'success') {
@@ -447,8 +461,8 @@ function showNotif(msg, type = 'success') {
     notif.id = 'notif';
     document.body.appendChild(notif);
   }
-  notif.textContent  = msg;
-  notif.className    = `notif ${type}`;
+  notif.textContent = msg;
+  notif.className = `notif ${type}`;
   notif.style.display = 'block';
   clearTimeout(notif._timer);
   notif._timer = setTimeout(() => { notif.style.display = 'none'; }, 3500);

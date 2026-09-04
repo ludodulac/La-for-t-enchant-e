@@ -3,63 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>La Forêt Enchantée — Bibliothèque audio jeunesse</title>
-  <meta name="description" content="Découvre des histoires, contes et comptines dans la Forêt Enchantée.">
+  <meta name="theme-color" content="#09100d">
+  <title>La Forêt Enchantée — Médiathèque</title>
+  <meta name="description" content="Parcourir, retrouver et écouter les histoires de La Forêt Enchantée.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/blog.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;750&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app-2026.css">
 </head>
-<body>
-
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="site-logo" onclick="renderHome()">🌲 La Forêt Enchantée</div>
-      <div class="search-wrap">
-        <input type="search" id="search-input" placeholder="Chercher une histoire…" autocomplete="off" aria-label="Rechercher une histoire">
-      </div>
-      <nav class="header-nav">
-        <a href="blog.html" class="nav-link">📖 Blog</a>
+<body class="media-app">
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navigation principale">
+      <a class="brand" href="index.html" aria-label="La Forêt Enchantée — accueil">
+        <span class="brand-mark" aria-hidden="true">⌁</span><span>La Forêt Enchantée</span>
+      </a>
+      <nav class="nav-group">
+        <button class="nav-button active" data-view="library"><span class="nav-icon">◫</span><span class="nav-label">Bibliothèque</span></button>
+        <button class="nav-button" data-view="recent"><span class="nav-icon">◷</span><span class="nav-label">Récents</span></button>
+        <button class="nav-button" data-view="categories"><span class="nav-icon">◇</span><span class="nav-label">Catégories</span></button>
+        <button class="nav-button" data-view="all"><span class="nav-icon">≡</span><span class="nav-label">Tous les audios</span></button>
       </nav>
+      <div class="sidebar-footer">
+        <a class="sidebar-link" href="blog.html">Journal</a>
+        <a class="sidebar-link" href="login.html">Administration</a>
+        <a class="sidebar-link" href="wikignose.html" title="Outil documentaire annexe" style="opacity:.46;font-size:.76rem;margin-top:4px">Outils · Wikignose</a>
+      </div>
+    </aside>
+
+    <main class="main-surface">
+      <div class="topbar">
+        <div class="search-field">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input id="search-input" type="search" placeholder="Rechercher un titre, une description…" autocomplete="off" aria-label="Rechercher dans la bibliothèque">
+          <button id="clear-search" class="clear-search" type="button" aria-label="Effacer la recherche" hidden>×</button>
+        </div>
+        <div class="top-actions">
+          <a class="icon-button" href="blog.html" aria-label="Ouvrir le journal" style="display:grid;place-items:center;text-decoration:none">✦</a>
+        </div>
+      </div>
+
+      <section class="page-head" aria-labelledby="page-title">
+        <div>
+          <div class="eyebrow" id="page-eyebrow">Médiathèque personnelle</div>
+          <h1 id="page-title">Votre forêt sonore</h1>
+          <p class="page-subtitle" id="page-subtitle">Retrouvez une histoire en quelques secondes, lancez-la immédiatement et continuez à parcourir la bibliothèque sans interrompre l’écoute.</p>
+          <div class="content-stats" id="content-stats" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <div class="toolbar" id="toolbar">
+        <div class="chips" id="category-chips" aria-label="Filtrer par catégorie"></div>
+        <div class="toolbar-spacer"></div>
+        <div class="view-switch" aria-label="Choisir l’affichage">
+          <button class="view-button active" id="grid-view" type="button" aria-label="Vue grille" aria-pressed="true">◫</button>
+          <button class="view-button" id="list-view" type="button" aria-label="Vue liste" aria-pressed="false">≡</button>
+        </div>
+      </div>
+
+      <section id="main-content" aria-live="polite">
+        <div class="loading-grid" aria-label="Chargement de la bibliothèque">
+          <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+        </div>
+      </section>
+
+      <footer style="margin-top:72px;padding-top:18px;border-top:1px solid rgba(255,255,255,.06);font-size:.74rem;color:#65736b;display:flex;gap:16px;flex-wrap:wrap">
+        <a href="login.html" style="color:inherit;text-decoration:none;opacity:.9">Administration</a>
+        <a href="wikignose.html" style="color:inherit;text-decoration:none;opacity:.7">Outil documentaire · Wikignose</a>
+      </footer>
+    </main>
+  </div>
+
+  <div class="mini-player" id="mini-player" role="region" aria-label="Lecteur audio" aria-hidden="true">
+    <div class="now-playing">
+      <img class="mini-cover" id="mini-cover" alt="">
+      <div class="now-copy">
+        <div class="now-title" id="mini-title">Aucune lecture</div>
+        <div class="now-sub" id="mini-sub"></div>
+      </div>
     </div>
-  </header>
-
-  <section class="hero" id="hero-section">
-    <h1 class="hero-title">🌿 La Forêt Enchantée</h1>
-    <p class="hero-sub">Choisis une histoire et laisse-toi emporter…</p>
-  </section>
-
-  <main class="main-wrap">
-    <div id="main-content"></div>
-  </main>
-
-  <footer class="site-footer">
-    <p>🌲 La Forêt Enchantée — Histoires et contes pour les enfants</p>
-    <p style="margin-top:1rem">
-      <a href="login.html" style="font-size:0.72rem;opacity:0.2;color:inherit;text-decoration:none">⚙ Admin</a>
-    </p>
-  </footer>
+    <div class="player-center">
+      <div class="transport">
+        <button id="prev-track" type="button" aria-label="Audio précédent">‹</button>
+        <button id="play-pause" class="primary" type="button" aria-label="Lecture">▶</button>
+        <button id="next-track" type="button" aria-label="Audio suivant">›</button>
+      </div>
+      <div class="progress-line"><span id="elapsed">0:00</span><input class="range" id="player-progress" type="range" min="0" max="100" step="0.1" value="0" aria-label="Progression"><span id="remaining">0:00</span></div>
+    </div>
+    <div class="player-side">
+      <span aria-hidden="true">⌁</span><input class="range" id="player-volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+      <a class="details-link" id="details-link" href="audio.html">Détails</a>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase.js"></script>
   <script src="js/app.js"></script>
-  <script>
-    const _origRenderHome = renderHome;
-    renderHome = function() {
-      document.getElementById('hero-section').style.display = '';
-      _origRenderHome();
-    };
-    const _origOpenCat = openCategory;
-    openCategory = function(cat) {
-      document.getElementById('hero-section').style.display = 'none';
-      _origOpenCat(cat);
-    };
-    const _origRenderSearch = renderSearch;
-    renderSearch = function(q) {
-      document.getElementById('hero-section').style.display = 'none';
-      _origRenderSearch(q);
-    };
-  </script>
+  <script src="js/app-resilience.js"></script>
+  <script src="js/app-accessibility.js"></script>
 </body>
 </html>
