@@ -16,12 +16,4 @@ document.addEventListener('DOMContentLoaded', () => {
     addAudio?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     document.getElementById('audio-title-in')?.focus();
   });
-
-  const observer = new MutationObserver(() => {
-    const audioStat = document.getElementById('stat-audios');
-    const catStat = document.getElementById('stat-cats');
-    if (audioStat && typeof audios !== 'undefined') audioStat.textContent = audios.length;
-    if (catStat && typeof categories !== 'undefined') catStat.textContent = categories.length;
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
 });
