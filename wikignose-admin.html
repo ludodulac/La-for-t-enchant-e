@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0f13">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Wikignose — Administration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;750&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app-2026.css">
+  <link rel="stylesheet" href="css/wikignose.css">
+  <link rel="stylesheet" href="css/admin-2026.css">
+  <style>
+    .wg-admin-shell{max-width:1120px;margin:0 auto;padding:42px 24px 90px}.wg-admin-hero{margin-bottom:28px}.wg-admin-hero h1{font-size:clamp(2rem,5vw,4rem);margin:.2rem 0 .7rem}.wg-admin-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:24px;margin:18px 0}.wg-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.wg-admin-grid .wide{grid-column:1/-1}.wg-admin-grid label{display:block;font-size:.84rem;margin-bottom:7px;color:#aeb9b3}.wg-admin-grid input{width:100%}.wg-layers{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0}.wg-layer{padding:16px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}.wg-layer p{margin:.45rem 0 0;color:#8e9a94;font-size:.9rem;line-height:1.55}.wg-admin-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.wg-status{color:#9eaaa4;font-size:.9rem}.wg-registry{display:grid;gap:10px}.wg-registry-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07)}.wg-registry-row:last-child{border-bottom:0}.wg-registry-meta{font-size:.8rem;color:#819088;margin-top:4px}.wg-login-gate{min-height:60vh;display:grid;place-items:center;text-align:center}.wg-login-gate[hidden]{display:none}@media(max-width:760px){.wg-admin-grid,.wg-layers{grid-template-columns:1fr}.wg-admin-grid .wide{grid-column:auto}.wg-registry-row{grid-template-columns:1fr}.wg-admin-shell{padding:28px 16px 72px}}
+  </style>
+</head>
+<body class="wikignose-app">
+  <header class="wg-site-header">
+    <a class="wg-wordmark" href="wikignose.html"><span class="wg-wordmark-mark" aria-hidden="true">⌕</span><span>Wikignose</span></a>
+    <div class="wg-site-actions">
+      <a class="wg-back-link" href="wikignose.html">Retour à la recherche</a>
+      <a class="wg-back-link" href="admin.html">Admin La Forêt</a>
+      <button id="wg-signout" class="wg-secondary" type="button">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="wg-admin-shell">
+    <section id="wg-auth-gate" class="wg-login-gate"><div><p>Vérification de l’accès administrateur…</p></div></section>
+    <div id="wg-admin-content" hidden>
+      <section class="wg-admin-hero">
+        <div class="wg-kicker">Administration Wikignose</div>
+        <h1>Ajouter un ouvrage</h1>
+        <p>Prépare un nouveau PDF pour son indexation. L’index lexical et l’index thématique restent deux couches distinctes, comme dans l’ancien Wikignose.</p>
+      </section>
+
+      <section class="wg-admin-card">
+        <div class="wg-admin-grid">
+          <div class="wide"><label for="wg-pdfs">PDF</label><input id="wg-pdfs" class="wg-input" type="file" accept="application/pdf,.pdf" multiple></div>
+          <div><label for="wg-title">Titre</label><input id="wg-title" class="wg-input" type="text" placeholder="Titre de l’ouvrage"></div>
+          <div><label for="wg-school">École / collection</label><input id="wg-school" class="wg-input" type="text" placeholder="Ex. École du cœur"></div>
+          <div><label for="wg-course">Cours / volume</label><input id="wg-course" class="wg-input" type="text" placeholder="Ex. Cours 3"></div>
+          <div><label for="wg-current">Courant</label><input id="wg-current" class="wg-input" type="text" placeholder="Ex. Tradition essénienne"></div>
+          <div class="wide"><label for="wg-masters">Maître(s) / auteur(s)</label><input id="wg-masters" class="wg-input" type="text" placeholder="Séparer par des virgules"></div>
+        </div>
+
+        <div class="wg-layers">
+          <div class="wg-layer"><strong>1. Occurrences</strong><p>Index mécanique : mots, expressions exactes, pages et fréquence. Cette couche doit être construite à partir du texte réel du PDF.</p></div>
+          <div class="wg-layer"><strong>2. Pertinence thématique</strong><p>Index sémantique : thèmes, sous-thèmes et importance. Cette couche peut ensuite être enrichie ou recalibrée lors de l’intégration.</p></div>
+        </div>
+
+        <div class="wg-admin-actions"><button id="wg-upload" class="wg-primary" type="button">Indexer / préparer l’ouvrage</button><span id="wg-status" class="wg-status" role="status" aria-live="polite"></span></div>
+      </section>
+
+      <section class="wg-admin-card">
+        <div class="wg-results-heading"><div><h2>Registre d’ingestion</h2><p class="wg-muted">Les PDF envoyés ici sont stockés dans le bucket privé Wikignose et inscrits dans le registre durable.</p></div></div>
+        <div id="wg-queue" class="wg-registry"><div class="wg-muted">Chargement…</div></div>
+      </section>
+
+      <section class="wg-admin-card">
+        <h2>Étape d’indexation</h2>
+        <p class="wg-muted">L’envoi prépare et conserve l’ouvrage dans le backend Wikignose. L’intégration finale dans l’index public reste une étape séparée : extraction lexicale, occurrences, puis enrichissement thématique.</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/wikignose-admin.js"></script>
+</body>
+</html>
