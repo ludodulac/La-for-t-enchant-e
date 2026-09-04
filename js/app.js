@@ -1,264 +1,299 @@
-// ============================================================
-// app.js — Logique principale (accueil, catégories, recherche)
-// ============================================================
-
-// ── État global de navigation ────────────────────────────────
+// La Forêt Enchantée — bibliothèque 2026
 const state = {
-  view: 'home',          // 'home' | 'category' | 'subcategory' | 'search'
-  currentCategory: null,
-  currentSubcategory: null,
-  searchQuery: '',
+  view: 'library',
+  display: localStorage.getItem('forestDisplay') || 'grid',
+  categoryId: null,
+  query: '',
   categories: [],
   subcategories: [],
   audios: [],
+  currentAudio: null,
+  queue: [],
 };
 
-// ── Point d'entrée ───────────────────────────────────────────
+const player = new Audio();
+player.preload = 'metadata';
+
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));
+}
+
+function formatDuration(seconds) {
+  if (!Number.isFinite(Number(seconds))) return '—';
+  const value = Math.max(0, Math.floor(Number(seconds)));
+  return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
+}
+
+function categoryFor(audio) {
+  return state.categories.find(category => category.id === audio.category_id);
+}
+
+function subcategoryFor(audio) {
+  return state.subcategories.find(sub => sub.id === audio.subcategory_id);
+}
+
+function imageUrl(audio) {
+  return audio.image_path ? getPublicUrl('images', audio.image_path) : '';
+}
+
+function audioUrl(audio) {
+  return audio.audio_path ? getPublicUrl('audios', audio.audio_path) : '';
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  wireInterface();
   await loadData();
-  renderHome();
-  setupSearch();
+  render();
 });
 
-// ── Chargement des données depuis Supabase ───────────────────
 async function loadData() {
-  const [cats, subs, auds] = await Promise.all([
-    dbClient.from('categories').select('*').order('name'),
-    dbClient.from('subcategories').select('*').order('name'),
-    dbClient.from('audios').select('*').order('created_at', { ascending: false }),
-  ]);
-  state.categories    = cats.data  ?? [];
-  state.subcategories = subs.data  ?? [];
-  state.audios        = auds.data  ?? [];
-}
-
-// ── Rendu de l'accueil ───────────────────────────────────────
-function renderHome() {
-  state.view = 'home';
-  state.currentCategory    = null;
-  state.currentSubcategory = null;
-
-  const main = document.getElementById('main-content');
-  main.innerHTML = `
-    <div class="breadcrumb"><span class="bc-item active">🏠 Accueil</span></div>
-    <div class="hero-text">
-      <p class="hero-sub">Choisis une histoire et laisse-toi emporter…</p>
-    </div>
-    <div class="categories-grid" id="categories-grid"></div>
-  `;
-
-  const grid = document.getElementById('categories-grid');
-
-  // Icônes et couleurs thématiques par catégorie
-  const catMeta = {
-    'Contes traditionnels':     { icon: '📖', color: 'var(--cat-1)' },
-    'Contes esséniens':         { icon: '✨', color: 'var(--cat-2)' },
-    'Histoires inspirantes':    { icon: '🌟', color: 'var(--cat-3)' },
-    'Relaxation et méditation': { icon: '🌙', color: 'var(--cat-4)' },
-    'Comptines':                { icon: '🎵', color: 'var(--cat-5)' },
-  };
-
-  state.categories.forEach(cat => {
-    const meta = catMeta[cat.name] ?? { icon: '🌿', color: 'var(--cat-1)' };
-    const count = state.audios.filter(a => a.category_id === cat.id).length;
-    const card  = document.createElement('div');
-    card.className = 'cat-card';
-    card.style.setProperty('--cat-color', meta.color);
-    card.innerHTML = `
-      <div class="cat-icon">${meta.icon}</div>
-      <div class="cat-name">${cat.name}</div>
-      <div class="cat-count">${count} histoire${count !== 1 ? 's' : ''}</div>
-    `;
-    card.addEventListener('click', () => openCategory(cat));
-    grid.appendChild(card);
-  });
-
-  // Si aucune catégorie encore, message d'invitation
-  if (state.categories.length === 0) {
-    grid.innerHTML = '<p class="empty-msg">Les histoires arrivent bientôt… 🌱</p>';
+  const main = $('#main-content');
+  try {
+    const [cats, subs, auds] = await Promise.all([
+      dbClient.from('categories').select('*').order('name'),
+      dbClient.from('subcategories').select('*').order('name'),
+      dbClient.from('audios').select('*').order('created_at', { ascending: false }),
+    ]);
+    const firstError = cats.error || subs.error || auds.error;
+    if (firstError) throw firstError;
+    state.categories = cats.data ?? [];
+    state.subcategories = subs.data ?? [];
+    state.audios = auds.data ?? [];
+  } catch (error) {
+    console.error(error);
+    main.innerHTML = `<div class="empty-state"><strong>Impossible de charger la bibliothèque</strong><span>Vérifie la connexion puis recharge la page.</span></div>`;
   }
 }
 
-// ── Ouverture d'une catégorie ────────────────────────────────
-function openCategory(cat) {
-  state.view            = 'category';
-  state.currentCategory = cat;
+function wireInterface() {
+  $$('.nav-button').forEach(button => button.addEventListener('click', () => {
+    state.view = button.dataset.view;
+    state.categoryId = null;
+    state.query = '';
+    $('#search-input').value = '';
+    $('#clear-search').hidden = true;
+    render();
+  }));
 
-  const subs   = state.subcategories.filter(s => s.category_id === cat.id);
-  const direct = state.audios.filter(a => a.category_id === cat.id && !a.subcategory_id);
+  const search = $('#search-input');
+  search.addEventListener('input', () => {
+    state.query = search.value.trim();
+    $('#clear-search').hidden = !state.query;
+    render();
+  });
+  $('#clear-search').addEventListener('click', () => {
+    search.value = '';
+    state.query = '';
+    $('#clear-search').hidden = true;
+    search.focus();
+    render();
+  });
 
-  const main = document.getElementById('main-content');
-  main.innerHTML = `
-    <div class="breadcrumb">
-      <span class="bc-item bc-link" onclick="renderHome()">🏠 Accueil</span>
-      <span class="bc-sep">›</span>
-      <span class="bc-item active">${cat.name}</span>
-    </div>
-    <h2 class="section-title">${cat.name}</h2>
-    <div id="sub-list"></div>
-    <div id="audio-list"></div>
-  `;
+  $('#grid-view').addEventListener('click', () => setDisplay('grid'));
+  $('#list-view').addEventListener('click', () => setDisplay('list'));
+  $('#play-pause').addEventListener('click', togglePlay);
+  $('#prev-track').addEventListener('click', () => stepTrack(-1));
+  $('#next-track').addEventListener('click', () => stepTrack(1));
+  $('#player-progress').addEventListener('input', event => {
+    if (Number.isFinite(player.duration)) player.currentTime = Number(event.target.value);
+  });
+  $('#player-volume').addEventListener('input', event => player.volume = Number(event.target.value));
 
-  const subList = document.getElementById('sub-list');
+  player.addEventListener('play', updatePlayerState);
+  player.addEventListener('pause', updatePlayerState);
+  player.addEventListener('loadedmetadata', updateProgress);
+  player.addEventListener('timeupdate', updateProgress);
+  player.addEventListener('ended', () => stepTrack(1));
+}
 
-  // Sous-catégories
-  if (subs.length > 0) {
-    const heading = document.createElement('h3');
-    heading.className = 'subsection-title';
-    heading.textContent = 'Sous-catégories';
-    subList.appendChild(heading);
+function setDisplay(display) {
+  state.display = display;
+  localStorage.setItem('forestDisplay', display);
+  render();
+}
 
-    const subGrid = document.createElement('div');
-    subGrid.className = 'sub-grid';
-    subs.forEach(sub => {
-      const count = state.audios.filter(a => a.subcategory_id === sub.id).length;
-      const card  = document.createElement('div');
-      card.className = 'sub-card';
-      card.innerHTML = `
-        <div class="sub-name">${sub.name}</div>
-        <div class="sub-count">${count} histoire${count !== 1 ? 's' : ''}</div>
-      `;
-      card.addEventListener('click', () => openSubcategory(sub));
-      subGrid.appendChild(card);
+function filteredAudios() {
+  let result = [...state.audios];
+  if (state.view === 'recent') result = result.slice(0, 18);
+  if (state.categoryId) result = result.filter(audio => audio.category_id === state.categoryId);
+  if (state.query) {
+    const needle = state.query.toLocaleLowerCase('fr');
+    result = result.filter(audio => {
+      const category = categoryFor(audio)?.name ?? '';
+      const sub = subcategoryFor(audio)?.name ?? '';
+      return [audio.title, audio.description, category, sub].some(value => (value ?? '').toLocaleLowerCase('fr').includes(needle));
     });
-    subList.appendChild(subGrid);
   }
-
-  // Audios directement dans la catégorie (sans sous-catégorie)
-  if (direct.length > 0) {
-    const audioList = document.getElementById('audio-list');
-    const heading   = document.createElement('h3');
-    heading.className = 'subsection-title';
-    heading.textContent = subs.length > 0 ? 'Histoires sans sous-catégorie' : 'Histoires';
-    audioList.appendChild(heading);
-    renderAudioGrid(direct, audioList);
-  }
-
-  if (subs.length === 0 && direct.length === 0) {
-    document.getElementById('audio-list').innerHTML = '<p class="empty-msg">Pas encore d\'histoires ici… 🌱</p>';
-  }
+  return result;
 }
 
-// ── Ouverture d'une sous-catégorie ──────────────────────────
-function openSubcategory(sub) {
-  state.view               = 'subcategory';
-  state.currentSubcategory = sub;
+function render() {
+  if (!state.audios.length && !state.categories.length) return;
+  updateNavigation();
+  updateHeader();
+  renderFilters();
 
-  const cat    = state.categories.find(c => c.id === sub.category_id);
-  const audios = state.audios.filter(a => a.subcategory_id === sub.id);
-
-  const main = document.getElementById('main-content');
-  main.innerHTML = `
-    <div class="breadcrumb">
-      <span class="bc-item bc-link" onclick="renderHome()">🏠 Accueil</span>
-      <span class="bc-sep">›</span>
-      <span class="bc-item bc-link" onclick="openCategory(state.currentCategory)">${cat?.name ?? ''}</span>
-      <span class="bc-sep">›</span>
-      <span class="bc-item active">${sub.name}</span>
-    </div>
-    <h2 class="section-title">${sub.name}</h2>
-    <div id="audio-list"></div>
-  `;
-
-  const list = document.getElementById('audio-list');
-  if (audios.length === 0) {
-    list.innerHTML = '<p class="empty-msg">Pas encore d\'histoires ici… 🌱</p>';
-  } else {
-    renderAudioGrid(audios, list);
+  const main = $('#main-content');
+  if (state.view === 'categories' && !state.query) {
+    renderCategories(main);
+    return;
   }
-}
 
-// ── Affichage d'une grille d'audios ─────────────────────────
-function renderAudioGrid(audios, container) {
-  const grid = document.createElement('div');
-  grid.className = 'audio-grid';
-
-  audios.forEach(audio => {
-    const imgUrl = audio.image_path
-      ? getPublicUrl('images', audio.image_path)
-      : 'assets/default-cover.svg';
-
-    const card = document.createElement('div');
-    card.className = 'audio-card';
-    card.innerHTML = `
-      <div class="audio-cover" style="background-image:url('${imgUrl}')"></div>
-      <div class="audio-info">
-        <div class="audio-title">${audio.title}</div>
-        ${audio.duration ? `<div class="audio-duration">🎧 ${formatDuration(audio.duration)}</div>` : ''}
-      </div>
-    `;
-    card.addEventListener('click', () => openAudio(audio.id));
-    grid.appendChild(card);
-  });
-
-  container.appendChild(grid);
-}
-
-// ── Recherche ────────────────────────────────────────────────
-function setupSearch() {
-  const input = document.getElementById('search-input');
-  if (!input) return;
-
-  let debounce;
-  input.addEventListener('input', () => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
-      const q = input.value.trim();
-      if (q.length === 0) {
-        renderHome();
-      } else {
-        renderSearch(q);
-      }
-    }, 250);
-  });
-}
-
-function renderSearch(query) {
-  state.view        = 'search';
-  state.searchQuery = query;
-
-  const q      = query.toLowerCase();
-  const found  = state.audios.filter(a =>
-    a.title.toLowerCase().includes(q) ||
-    (a.description ?? '').toLowerCase().includes(q)
-  );
-
-  const main = document.getElementById('main-content');
-  main.innerHTML = `
-    <div class="breadcrumb">
-      <span class="bc-item bc-link" onclick="renderHome()">🏠 Accueil</span>
-      <span class="bc-sep">›</span>
-      <span class="bc-item active">Recherche : "${query}"</span>
-    </div>
-    <h2 class="section-title">${found.length} résultat${found.length !== 1 ? 's' : ''}</h2>
-    <div id="audio-list"></div>
-  `;
-
-  const list = document.getElementById('audio-list');
-  if (found.length === 0) {
-    list.innerHTML = '<p class="empty-msg">Aucune histoire trouvée pour « ' + query + ' » 🔍</p>';
-  } else {
-    renderAudioGrid(found, list);
+  const audios = filteredAudios();
+  if (!audios.length) {
+    main.innerHTML = `<div class="empty-state"><strong>Aucun contenu trouvé</strong><span>Essaie un autre mot ou enlève le filtre de catégorie.</span></div>`;
+    return;
   }
+
+  state.queue = audios;
+  main.innerHTML = state.display === 'list' ? renderList(audios) : renderGrid(audios);
+  bindMediaActions(main);
 }
 
-// ── Navigation vers la fiche audio ──────────────────────────
-function openAudio(id) {
-  // Sauvegarde du contexte de navigation pour le bouton "retour"
-  const ctx = {
-    view:     state.view,
-    catId:    state.currentCategory?.id,
-    subId:    state.currentSubcategory?.id,
-    query:    state.searchQuery,
+function updateNavigation() {
+  $$('.nav-button').forEach(button => button.classList.toggle('active', button.dataset.view === state.view));
+  $('#grid-view').classList.toggle('active', state.display === 'grid');
+  $('#list-view').classList.toggle('active', state.display === 'list');
+  $('#grid-view').setAttribute('aria-pressed', String(state.display === 'grid'));
+  $('#list-view').setAttribute('aria-pressed', String(state.display === 'list'));
+}
+
+function updateHeader() {
+  const titles = {
+    library: ['Médiathèque personnelle', 'Votre forêt sonore', 'Choisissez une histoire, lancez-la immédiatement et continuez à explorer sans interrompre l’écoute.'],
+    recent: ['À reprendre et découvrir', 'Récemment ajoutés', 'Les derniers contenus publiés, directement accessibles.'],
+    categories: ['Explorer', 'Toutes les catégories', 'Parcourez la collection par univers sonore.'],
+    all: ['Bibliothèque', 'Tous les audios', 'Une vue exhaustive, idéale pour retrouver rapidement un contenu précis.'],
   };
-  sessionStorage.setItem('navContext', JSON.stringify(ctx));
-  window.location.href = `audio.html?id=${id}`;
+  let [eyebrow, title, subtitle] = titles[state.view] ?? titles.library;
+  if (state.query) {
+    eyebrow = 'Recherche';
+    title = `« ${state.query} »`;
+    subtitle = 'Résultats dans les titres, descriptions et catégories.';
+  }
+  $('#page-eyebrow').textContent = eyebrow;
+  $('#page-title').textContent = title;
+  $('#page-subtitle').textContent = subtitle;
+  $('#content-stats').innerHTML = `<span class="stat-pill">${state.audios.length} audio${state.audios.length > 1 ? 's' : ''}</span><span class="stat-pill">${state.categories.length} catégorie${state.categories.length > 1 ? 's' : ''}</span>`;
+  $('#toolbar').style.display = state.view === 'categories' && !state.query ? 'none' : '';
 }
 
-// ── Utilitaires ──────────────────────────────────────────────
-function formatDuration(seconds) {
-  if (!seconds) return '';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+function renderFilters() {
+  const chips = $('#category-chips');
+  chips.innerHTML = `<button class="chip ${!state.categoryId ? 'active' : ''}" data-category="">Tout</button>` + state.categories.map(category => {
+    const count = state.audios.filter(audio => audio.category_id === category.id).length;
+    return `<button class="chip ${state.categoryId === category.id ? 'active' : ''}" data-category="${escapeHtml(category.id)}">${escapeHtml(category.name)} · ${count}</button>`;
+  }).join('');
+  chips.querySelectorAll('.chip').forEach(chip => chip.addEventListener('click', () => {
+    state.categoryId = chip.dataset.category || null;
+    render();
+  }));
+}
+
+function renderCategories(container) {
+  const cards = state.categories.map(category => {
+    const count = state.audios.filter(audio => audio.category_id === category.id).length;
+    const subs = state.subcategories.filter(sub => sub.category_id === category.id).length;
+    return `<button class="collection-card" data-category="${escapeHtml(category.id)}"><span class="collection-icon" aria-hidden="true">⌁</span><div class="collection-name">${escapeHtml(category.name)}</div><div class="collection-count">${count} histoire${count > 1 ? 's' : ''}${subs ? ` · ${subs} sous-catégorie${subs > 1 ? 's' : ''}` : ''}</div></button>`;
+  }).join('');
+  container.innerHTML = cards ? `<div class="collection-grid">${cards}</div>` : `<div class="empty-state"><strong>Aucune catégorie</strong><span>Les catégories créées dans l’administration apparaîtront ici.</span></div>`;
+  container.querySelectorAll('.collection-card').forEach(card => card.addEventListener('click', () => {
+    state.view = 'all';
+    state.categoryId = card.dataset.category;
+    render();
+  }));
+}
+
+function renderGrid(audios) {
+  return `<div class="media-grid">${audios.map(audio => {
+    const category = categoryFor(audio)?.name ?? 'Audio';
+    const cover = imageUrl(audio);
+    return `<article class="media-card" data-id="${escapeHtml(audio.id)}" tabindex="0" aria-label="${escapeHtml(audio.title)}">
+      <div class="cover-wrap">${cover ? `<img class="cover-image" src="${escapeHtml(cover)}" alt="" loading="lazy">` : `<div class="cover-placeholder" aria-hidden="true">⌁</div>`}<button class="card-play" type="button" data-play="${escapeHtml(audio.id)}" aria-label="Lire ${escapeHtml(audio.title)}">▶</button></div>
+      <div class="media-meta"><div class="media-title">${escapeHtml(audio.title)}</div><div class="media-sub"><span>${escapeHtml(category)}</span><span>${formatDuration(audio.duration)}</span></div></div>
+    </article>`;
+  }).join('')}</div>`;
+}
+
+function renderList(audios) {
+  return `<div class="media-list">${audios.map(audio => {
+    const category = categoryFor(audio)?.name ?? 'Audio';
+    const cover = imageUrl(audio);
+    return `<article class="media-row" data-id="${escapeHtml(audio.id)}" tabindex="0">${cover ? `<img class="row-cover" src="${escapeHtml(cover)}" alt="" loading="lazy">` : `<div class="row-cover cover-placeholder" aria-hidden="true">⌁</div>`}<div><div class="row-title">${escapeHtml(audio.title)}</div><div class="row-sub">${escapeHtml(category)}${audio.description ? ` · ${escapeHtml(audio.description).slice(0, 90)}` : ''}</div></div><div class="row-duration">${formatDuration(audio.duration)}</div><button class="row-play" type="button" data-play="${escapeHtml(audio.id)}" aria-label="Lire ${escapeHtml(audio.title)}">▶</button></article>`;
+  }).join('')}</div>`;
+}
+
+function bindMediaActions(container) {
+  container.querySelectorAll('[data-play]').forEach(button => button.addEventListener('click', event => {
+    event.stopPropagation();
+    playById(button.dataset.play);
+  }));
+  container.querySelectorAll('[data-id]').forEach(item => {
+    const open = () => window.location.href = `audio.html?id=${encodeURIComponent(item.dataset.id)}`;
+    item.addEventListener('click', event => { if (!event.target.closest('[data-play]')) open(); });
+    item.addEventListener('keydown', event => { if (event.key === 'Enter') open(); });
+  });
+}
+
+function playById(id) {
+  const audio = state.audios.find(item => String(item.id) === String(id));
+  if (!audio || !audio.audio_path) return;
+  const sameTrack = state.currentAudio && String(state.currentAudio.id) === String(audio.id);
+  if (!sameTrack) {
+    state.currentAudio = audio;
+    player.src = audioUrl(audio);
+    updateNowPlaying();
+  }
+  player.play().catch(error => console.error('Lecture impossible', error));
+}
+
+function togglePlay() {
+  if (!state.currentAudio) {
+    const first = filteredAudios()[0];
+    if (first) playById(first.id);
+    return;
+  }
+  player.paused ? player.play() : player.pause();
+}
+
+function stepTrack(direction) {
+  if (!state.queue.length) state.queue = filteredAudios();
+  if (!state.queue.length) return;
+  const current = state.currentAudio ? state.queue.findIndex(item => String(item.id) === String(state.currentAudio.id)) : -1;
+  const next = (current + direction + state.queue.length) % state.queue.length;
+  playById(state.queue[next].id);
+}
+
+function updateNowPlaying() {
+  const audio = state.currentAudio;
+  if (!audio) return;
+  const mini = $('#mini-player');
+  mini.classList.add('visible');
+  mini.setAttribute('aria-hidden', 'false');
+  $('#mini-title').textContent = audio.title;
+  $('#mini-sub').textContent = categoryFor(audio)?.name ?? 'La Forêt Enchantée';
+  const cover = imageUrl(audio);
+  const coverEl = $('#mini-cover');
+  coverEl.src = cover || '';
+  coverEl.hidden = !cover;
+  $('#details-link').href = `audio.html?id=${encodeURIComponent(audio.id)}`;
+  updatePlayerState();
+}
+
+function updatePlayerState() {
+  const button = $('#play-pause');
+  button.textContent = player.paused ? '▶' : 'Ⅱ';
+  button.setAttribute('aria-label', player.paused ? 'Lecture' : 'Pause');
+}
+
+function updateProgress() {
+  const progress = $('#player-progress');
+  const duration = Number.isFinite(player.duration) ? player.duration : Number(state.currentAudio?.duration || 0);
+  progress.max = duration || 100;
+  progress.value = Number.isFinite(player.currentTime) ? player.currentTime : 0;
+  $('#elapsed').textContent = formatDuration(player.currentTime || 0);
+  $('#remaining').textContent = formatDuration(duration || 0);
 }
