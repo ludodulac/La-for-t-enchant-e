@@ -36,8 +36,9 @@
     return [...set].some((word) => word.length >= 5 && (word.startsWith(term) || term.startsWith(word)));
   };
   const allEntries = index.documents.flatMap((doc) => (doc.sections || []).map((section) => ({ doc, section })));
+  const lexicalEntries = allEntries.filter(({ section }) => (section.text || '').trim() || (section.occurrenceTerms || []).length);
 
-  corpusStats.textContent = `${index.documents.length} ouvrage${index.documents.length > 1 ? 's' : ''} · ${allEntries.length} sections indexées`;
+  corpusStats.textContent = `${index.documents.length} ouvrage${index.documents.length > 1 ? 's' : ''} · ${allEntries.length} sections indexées · ${lexicalEntries.length} avec index lexical`;
 
   function searchableText(doc, section) {
     return normalize([doc.title, doc.school, doc.collection, doc.course, doc.current, ...(doc.masters || []), section.title, section.summary, ...(section.themes || []), ...(section.aliases || []), ...(section.masters || []), ...(section.currents || []), ...(section.occurrenceTerms || []), section.text || ''].join(' '));
@@ -86,10 +87,8 @@
   function occurrenceScore(doc, section, rawQuery) {
     const phrase = normalize(rawQuery);
     if (!phrase) return 0;
-    const fallback = searchableText(doc, section);
-    const explicit = normalize([section.text || '', ...(section.occurrenceTerms || [])].join(' '));
-    const source = explicit || fallback;
-    if (!source.includes(phrase)) return 0;
+    const source = normalize([section.text || '', ...(section.occurrenceTerms || [])].join(' '));
+    if (!source || !source.includes(phrase)) return 0;
     let count = 0;
     let cursor = 0;
     while ((cursor = source.indexOf(phrase, cursor)) !== -1) {
@@ -109,7 +108,7 @@
   function renderResults(items) {
     resultCount.textContent = `${items.length} résultat${items.length > 1 ? 's' : ''}`;
     if (!items.length) {
-      results.innerHTML = `<div class="wg-empty">${searchMode === 'occurrences' ? 'Aucune occurrence exacte dans l’index lexical disponible. Certains ouvrages n’ont pas encore leur texte intégral indexé.' : 'Aucun résultat thématique avec ces critères.'}</div>`;
+      results.innerHTML = `<div class="wg-empty">${searchMode === 'occurrences' ? 'Aucune occurrence vérifiable dans l’index lexical disponible. Les sections sans texte ou occurrenceTerms ne sont volontairement pas utilisées dans ce mode.' : 'Aucun résultat thématique avec ces critères.'}</div>`;
       return;
     }
     const maxScore = Math.max(...items.map((item) => item.score));
@@ -147,7 +146,7 @@
     searchMode = mode;
     modeThemes.classList.toggle('active', mode === 'themes');
     modeOccurrences.classList.toggle('active', mode === 'occurrences');
-    modeHelp.textContent = mode === 'themes' ? 'Classe les résultats selon l’importance du thème dans les chapitres et passages déjà analysés.' : 'Cherche un mot ou un groupe de mots tel qu’il apparaît dans l’index lexical disponible.';
+    modeHelp.textContent = mode === 'themes' ? 'Classe les résultats selon l’importance du thème dans les chapitres et passages déjà analysés.' : 'Cherche un mot ou un groupe de mots uniquement dans le texte ou l’index lexical réellement disponible.';
     queryInput.placeholder = mode === 'themes' ? 'Ex. préparation intérieure avant de commencer une œuvre' : 'Ex. premier pas';
     if (queryInput.value.trim()) search();
   }
