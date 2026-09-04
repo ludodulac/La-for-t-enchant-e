@@ -59,6 +59,10 @@ if (location.pathname.endsWith('/admin.html') || location.pathname.endsWith('adm
     ux.src = 'js/admin-ux.js';
     document.body.appendChild(ux);
 
+    const blogSafety = document.createElement('script');
+    blogSafety.src = 'js/admin-blog-safety.js';
+    document.body.appendChild(blogSafety);
+
     const wikignose = document.createElement('script');
     wikignose.src = 'js/admin-wikignose.js';
     document.body.appendChild(wikignose);
