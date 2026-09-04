@@ -1,10 +1,16 @@
 (() => {
+  const BUCKET = 'wikignose-pdfs';
+
   function esc(value) {
     return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
   function safeName(name) {
     return String(name || 'document.pdf').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(-120) || 'document.pdf';
+  }
+
+  function statusLabel(status) {
+    return ({ pending: 'En attente', indexing: 'Indexation', indexed: 'Indexé', error: 'Erreur', archived: 'Archivé' })[status] || status || '—';
   }
 
   async function init() {
@@ -24,8 +30,8 @@
     panel.id = 'tab-wikignose';
     panel.innerHTML = `
       <div class="admin-section">
-        <h3>⌕ Recherche documentaire</h3>
-        <p class="empty-msg">Wikignose fait désormais partie de La Forêt Enchantée. Son moteur public utilise l’index local du dépôt ; cet écran prépare les nouveaux PDF pour leur indexation.</p>
+        <h3>⌕ Outil documentaire Wikignose</h3>
+        <p class="empty-msg">Wikignose est un outil annexe hébergé avec La Forêt Enchantée pour mutualiser l’infrastructure. Son interface publique reste séparée de la médiathèque jeunesse ; cet écran prépare les PDF privés destinés à son indexation.</p>
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem">
           <a class="btn-primary" style="max-width:220px;text-align:center;text-decoration:none" href="wikignose.html">Ouvrir Wikignose</a>
         </div>
@@ -40,7 +46,7 @@
           <div class="form-group"><label for="wg-current">Courant <span class="optional">(facultatif)</span></label><input id="wg-current" type="text" placeholder="Détection automatique"></div>
           <div class="form-group" style="grid-column:1/-1"><label for="wg-masters">Maîtres / auteurs <span class="optional">(facultatif)</span></label><input id="wg-masters" type="text" placeholder="Séparer plusieurs noms par des virgules"></div>
         </div>
-        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:1rem"><button id="wg-upload" class="btn-primary" type="button" style="max-width:240px">Envoyer à indexer</button><span id="wg-status" class="empty-msg"></span></div>
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:1rem"><button id="wg-upload" class="btn-primary" type="button" style="max-width:240px">Envoyer à indexer</button><span id="wg-status" class="empty-msg" role="status" aria-live="polite"></span></div>
       </div>
       <div class="admin-section"><h3>Ouvrages en attente</h3><div id="wg-queue" class="empty-msg">Chargement…</div></div>`;
     wrap.appendChild(panel);
@@ -59,12 +65,44 @@
   async function loadQueue() {
     const list = document.getElementById('wg-queue');
     if (!list) return;
-    const { data, error } = await dbClient.from('wikignose_pending_documents').select('id,original_filename,file_size,status,uploaded_at,title_hint,school_hint,course_hint').order('uploaded_at', { ascending: false }).limit(100);
+    const { data, error } = await dbClient.from('wikignose_pending_documents')
+      .select('id,storage_path,original_filename,file_size,status,uploaded_at,title_hint,school_hint,course_hint')
+      .order('uploaded_at', { ascending: false }).limit(100);
     if (error) {
-      list.textContent = 'Le backend Wikignose n’est pas encore disponible : ' + error.message;
+      list.textContent = 'Le backend Wikignose n’est pas disponible : ' + error.message;
       return;
     }
-    list.innerHTML = data.length ? data.map((item) => `<div class="admin-row"><div><strong class="row-name">${esc(item.title_hint || item.original_filename)}</strong><div class="row-meta">${esc(item.original_filename)} · ${((item.file_size || 0) / 1024 / 1024).toFixed(2)} Mo${item.school_hint ? ' · ' + esc(item.school_hint) : ''}${item.course_hint ? ' · ' + esc(item.course_hint) : ''}</div></div><span class="row-meta">${esc(item.status)} · ${new Date(item.uploaded_at).toLocaleString('fr-FR')}</span></div>`).join('') : '<p class="empty-msg">Aucun ouvrage en attente.</p>';
+    if (!data.length) {
+      list.innerHTML = '<p class="empty-msg">Aucun ouvrage en attente.</p>';
+      return;
+    }
+
+    list.innerHTML = data.map((item) => `<div class="admin-row" data-wg-id="${esc(item.id)}"><div><strong class="row-name">${esc(item.title_hint || item.original_filename)}</strong><div class="row-meta">${esc(item.original_filename)} · ${((item.file_size || 0) / 1024 / 1024).toFixed(2)} Mo${item.school_hint ? ' · ' + esc(item.school_hint) : ''}${item.course_hint ? ' · ' + esc(item.course_hint) : ''}</div></div><span class="row-meta">${esc(statusLabel(item.status))} · ${new Date(item.uploaded_at).toLocaleString('fr-FR')}</span><div class="row-actions"><button class="btn-sm btn-del" type="button" data-wg-delete>Retirer</button></div></div>`).join('');
+
+    data.forEach((item) => {
+      const row = [...list.querySelectorAll('[data-wg-id]')].find((el) => el.dataset.wgId === String(item.id));
+      row?.querySelector('[data-wg-delete]')?.addEventListener('click', () => deleteQueuedDocument(item));
+    });
+  }
+
+  async function deleteQueuedDocument(item) {
+    if (!confirm(`Retirer « ${item.title_hint || item.original_filename} » de la file Wikignose ?`)) return;
+    const status = document.getElementById('wg-status');
+    status.textContent = 'Suppression de la file…';
+
+    const { error: dbError } = await dbClient.from('wikignose_pending_documents').delete().eq('id', item.id);
+    if (dbError) {
+      status.textContent = 'Suppression refusée : ' + dbError.message;
+      return;
+    }
+
+    const { error: storageError } = await dbClient.storage.from(BUCKET).remove([item.storage_path]);
+    if (storageError) {
+      status.textContent = 'Entrée retirée. Le PDF privé n’a pas pu être nettoyé automatiquement : ' + storageError.message;
+    } else {
+      status.textContent = 'Ouvrage retiré et PDF privé nettoyé.';
+    }
+    await loadQueue();
   }
 
   async function uploadFiles() {
@@ -76,33 +114,37 @@
     const invalid = files.find((file) => file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'));
     if (invalid) { status.textContent = `${invalid.name} n’est pas reconnu comme PDF.`; return; }
 
+    const masters = document.getElementById('wg-masters').value.split(',').map((x) => x.trim()).filter(Boolean);
     const hints = {
       title_hint: document.getElementById('wg-title').value.trim() || null,
       course_hint: document.getElementById('wg-course').value.trim() || null,
       school_hint: document.getElementById('wg-school').value.trim() || null,
       current_hint: document.getElementById('wg-current').value.trim() || null,
-      masters_hint: document.getElementById('wg-masters').value.split(',').map((x) => x.trim()).filter(Boolean) || null
+      masters_hint: masters.length ? masters : null
     };
 
     button.disabled = true;
     let done = 0;
-    for (const file of files) {
-      status.textContent = `Envoi ${done + 1}/${files.length} : ${file.name}`;
-      const path = `pending/${new Date().toISOString().replace(/[:.]/g, '-')}-${crypto.randomUUID()}-${safeName(file.name)}`;
-      const upload = await dbClient.storage.from('wikignose-pdfs').upload(path, file, { contentType: 'application/pdf', upsert: false });
-      if (upload.error) { status.textContent = `Échec pour ${file.name} : ${upload.error.message}`; continue; }
-      const meta = await dbClient.from('wikignose_pending_documents').insert({ storage_path: path, original_filename: file.name, file_size: file.size, ...hints, masters_hint: hints.masters_hint.length ? hints.masters_hint : null });
-      if (meta.error) {
-        await dbClient.storage.from('wikignose-pdfs').remove([path]);
-        status.textContent = `Fichier non enregistré dans la file : ${meta.error.message}`;
-        continue;
+    try {
+      for (const file of files) {
+        status.textContent = `Envoi ${done + 1}/${files.length} : ${file.name}`;
+        const path = `pending/${new Date().toISOString().replace(/[:.]/g, '-')}-${crypto.randomUUID()}-${safeName(file.name)}`;
+        const upload = await dbClient.storage.from(BUCKET).upload(path, file, { contentType: 'application/pdf', upsert: false });
+        if (upload.error) { status.textContent = `Échec pour ${file.name} : ${upload.error.message}`; continue; }
+        const meta = await dbClient.from('wikignose_pending_documents').insert({ storage_path: path, original_filename: file.name, file_size: file.size, ...hints });
+        if (meta.error) {
+          await dbClient.storage.from(BUCKET).remove([path]);
+          status.textContent = `Fichier non enregistré dans la file : ${meta.error.message}`;
+          continue;
+        }
+        done += 1;
       }
-      done += 1;
+      input.value = '';
+      status.textContent = `${done} fichier${done > 1 ? 's' : ''} envoyé${done > 1 ? 's' : ''} sur ${files.length}.`;
+      await loadQueue();
+    } finally {
+      button.disabled = false;
     }
-    input.value = '';
-    status.textContent = `${done} fichier${done > 1 ? 's' : ''} envoyé${done > 1 ? 's' : ''} sur ${files.length}.`;
-    button.disabled = false;
-    await loadQueue();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
