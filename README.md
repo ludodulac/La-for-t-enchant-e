@@ -62,7 +62,9 @@ Un workflow GitHub Actions vérifie notamment :
 - la présence des migrations Supabase communes ;
 - l’absence de référence active à l’ancien projet Supabase Wikignose ;
 - la séparation produit de Wikignose (`noindex`, accès secondaire, absence d’action principale) ;
-- les garde-fous de déduplication et de suppression de la file Wikignose.
+- les garde-fous de déduplication et de suppression de la file Wikignose ;
+- le chargement de la couche d’accessibilité ;
+- l’orchestration du back-office derrière la vérification d’autorisation.
 
 Le workflow utilise une version actuelle de `actions/checkout` compatible avec le runtime Node 24 des runners GitHub Actions.
 
