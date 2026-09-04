@@ -36,6 +36,12 @@ Pour les audios, les remplacements suivent l’ordre **upload nouveau → mise �
 
 Le blog applique désormais le même principe aux couvertures et aux médias inline : la base est mise à jour avant de supprimer un média ancien, et un nouveau fichier est nettoyé si son écriture SQL échoue.
 
+## Expérience publique
+
+La médiathèque, les fiches audio et le Journal partagent désormais la même direction visuelle premium et responsive. Le Journal conserve ses URLs et son modèle de données existants, mais utilise une couche de présentation modernisée dans `css/blog-2026.css`.
+
+Le CI vérifie aussi les contrats DOM dont dépendent les scripts publics afin qu’une refonte HTML ne casse pas silencieusement la médiathèque ou le Journal.
+
 ## Développement
 
 Le site reste volontairement léger : pas de framework applicatif ni de dépendance de build obligatoire.
@@ -43,8 +49,10 @@ Le site reste volontairement léger : pas de framework applicatif ni de dépenda
 Un workflow GitHub Actions vérifie :
 
 - la syntaxe des fichiers JavaScript ;
-- la présence des surfaces Wikignose et administration ;
+- la présence des surfaces publiques et administratives ;
+- les contrats DOM essentiels du Journal et de la médiathèque ;
 - la présence des migrations Supabase communes ;
-- l’absence de référence active à l’ancien projet Supabase Wikignose.
+- l’absence de référence active à l’ancien projet Supabase Wikignose ;
+- la séparation produit de Wikignose (`noindex`, accès secondaire, absence d’action principale).
 
 Les changements de la refonte premium et de l’intégration Wikignose sont préparés dans une branche dédiée avant fusion vers `main`.
