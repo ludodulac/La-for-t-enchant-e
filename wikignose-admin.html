@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/wikignose.css">
   <link rel="stylesheet" href="css/admin-2026.css">
   <style>
-    .wg-admin-shell{max-width:1120px;margin:0 auto;padding:42px 24px 90px}.wg-admin-hero{margin-bottom:28px}.wg-admin-hero h1{font-size:clamp(2rem,5vw,4rem);margin:.2rem 0 .7rem}.wg-admin-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:24px;margin:18px 0}.wg-admin-card label{display:block;font-size:.84rem;margin-bottom:7px;color:#aeb9b3}.wg-admin-card textarea{width:100%;min-height:150px;resize:vertical;line-height:1.55}.wg-admin-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}.wg-status{color:#9eaaa4;font-size:.9rem}.wg-registry{display:grid;gap:10px}.wg-registry-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07)}.wg-registry-row:last-child{border-bottom:0}.wg-registry-meta{font-size:.8rem;color:#819088;margin-top:4px}.wg-login-gate{min-height:60vh;display:grid;place-items:center;text-align:center}.wg-login-gate[hidden]{display:none}.wg-batches{display:grid;gap:16px;margin-top:16px}.wg-batch-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px}.wg-batch-heading{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.07)}.wg-batch-heading h3{margin:0 0 4px}.wg-batch-heading p{margin:0}.wg-batch-note{margin:14px 0}.wg-batch-note textarea{min-height:96px}.wg-summary{margin-top:8px;font-size:.9rem;color:#9eaaa4}.wg-upload-note{margin-top:10px;line-height:1.55}.wg-note-strong{color:#d8e0dc}.wg-upload-progress{display:grid;gap:8px;margin-top:16px}.wg-upload-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.025)}.wg-upload-row strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wg-upload-state{font-size:.82rem;color:#aeb9b3}.wg-upload-state[data-state="ok"]{color:#a9d9b4}.wg-upload-state[data-state="error"]{color:#f0aaa4}.wg-upload-state[data-state="duplicate"]{color:#dfc787}@media(max-width:760px){.wg-registry-row{grid-template-columns:1fr}.wg-admin-shell{padding:28px 16px 72px}.wg-batch-heading{flex-direction:column}.wg-upload-row{grid-template-columns:1fr}.wg-upload-state{text-align:left}}
+    .wg-admin-shell{max-width:1120px;margin:0 auto;padding:42px 24px 90px}.wg-admin-hero{margin-bottom:28px}.wg-admin-hero h1{font-size:clamp(2rem,5vw,4rem);margin:.2rem 0 .7rem}.wg-admin-card{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:24px;margin:18px 0}.wg-admin-card label{display:block;font-size:.84rem;margin-bottom:7px;color:#aeb9b3}.wg-admin-card textarea{width:100%;min-height:150px;resize:vertical;line-height:1.55}.wg-admin-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}.wg-status{color:#9eaaa4;font-size:.9rem}.wg-registry{display:grid;gap:10px}.wg-registry-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07)}.wg-registry-row:last-child{border-bottom:0}.wg-registry-meta{font-size:.8rem;color:#819088;margin-top:4px}.wg-login-gate{min-height:60vh;display:grid;place-items:center;text-align:center}.wg-login-gate[hidden]{display:none}.wg-batches{display:grid;gap:16px;margin-top:16px}.wg-batch-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px}.wg-batch-heading{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.07)}.wg-batch-heading h3{margin:0 0 4px}.wg-batch-heading p{margin:0}.wg-batch-note{margin:14px 0}.wg-batch-note textarea{min-height:96px}.wg-summary{margin-top:8px;font-size:.9rem;color:#9eaaa4}.wg-upload-note{margin-top:10px;line-height:1.55}.wg-note-strong{color:#d8e0dc}.wg-upload-progress{display:grid;gap:8px;margin-top:16px}.wg-upload-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:10px 12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.025)}.wg-upload-row strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wg-upload-state{font-size:.82rem;color:#aeb9b3}.wg-upload-state[data-state="ok"]{color:#a9d9b4;font-weight:700}.wg-upload-state[data-state="error"]{color:#f0aaa4;font-weight:700}.wg-upload-state[data-state="duplicate"]{color:#dfc787}@media(max-width:760px){.wg-registry-row{grid-template-columns:1fr}.wg-admin-shell{padding:28px 16px 72px}.wg-batch-heading{flex-direction:column}.wg-upload-row{grid-template-columns:1fr}.wg-upload-state{text-align:left}}
   </style>
 </head>
 <body class="wikignose-app">
@@ -32,13 +32,13 @@
       <section class="wg-admin-hero">
         <div class="wg-kicker">Administration Wikignose</div>
         <h1>Ajouter des ouvrages</h1>
-        <p>Un envoi crée un seul lot. Les PDF sont envoyés un par un avec reprise automatique en cas de coupure, puis Wikignose confirme chaque fichier avant d’annoncer la réussite.</p>
+        <p>Un envoi crée un seul lot. Un PDF n’est affiché comme enregistré qu’après confirmation du stockage privé et du registre Supabase.</p>
       </section>
 
       <section class="wg-admin-card">
         <label for="wg-pdfs">PDF — sélection multiple</label>
         <input id="wg-pdfs" class="wg-input" type="file" accept="application/pdf,.pdf" multiple>
-        <p class="wg-muted wg-upload-note">Maximum 10 ouvrages par envoi. Sur téléphone, l’avancement de chaque PDF reste visible ci-dessous.</p>
+        <p class="wg-muted wg-upload-note">Maximum 10 ouvrages par envoi. Garde cette page ouverte jusqu’à ce que chaque ligne affiche <strong>ENREGISTRÉ</strong>. Le traitement est allégé sur mobile pour éviter de charger le PDF entier en mémoire.</p>
 
         <label for="wg-ai-instruction" style="margin-top:20px">Instructions pour l’IA</label>
         <textarea id="wg-ai-instruction" class="wg-input" placeholder="Ex. Ces 6 ouvrages viennent de l’École essénienne et correspondent aux six premiers cours. Traite-les comme une série cohérente, tout en conservant les titres propres à chaque ouvrage."></textarea>
@@ -57,7 +57,7 @@
 
       <section class="wg-admin-card">
         <h2>Reprendre le travail ici</h2>
-        <p class="wg-muted">Quand le lot apparaît ci-dessus, clique sur <span class="wg-note-strong">« Copier le manifeste »</span> et colle-le dans cette conversation. Tant que le lot n’apparaît pas dans la file, considère l’envoi comme non terminé.</p>
+        <p class="wg-muted">Dès que le lot apparaît ci-dessus, tu peux simplement revenir dans cette conversation et me dire <span class="wg-note-strong">« traite le lot »</span>. Il n’est plus nécessaire de recopier manuellement les informations.</p>
       </section>
     </div>
   </main>
@@ -66,6 +66,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js"></script>
   <script src="js/supabase.js"></script>
   <script src="js/auth.js"></script>
-  <script src="js/wikignose-admin.js"></script>
+  <script src="js/wikignose-admin.js?v=20260904-4"></script>
+  <script src="js/wikignose-upload-safe.js?v=20260904-1"></script>
 </body>
 </html>
