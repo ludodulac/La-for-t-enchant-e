@@ -64,12 +64,15 @@ Le module Admin prépare :
 
 Les champs facultatifs sont des indications prioritaires mais ne remplacent pas la vérification réelle du document lors de l’indexation.
 
+Les comptes autorisés sont inscrits dans `public.app_admins`. La fonction `public.is_app_admin()` protège le back-office commun : un compte Supabase authentifié mais absent de `app_admins` ne peut pas écrire dans les contenus ni accéder aux PDF privés Wikignose.
+
 ## Sécurité
 
 - aucun secret ou clé `service_role` dans le frontend ;
 - le bucket PDF reste privé ;
-- les opérations Admin doivent être protégées par l’authentification et les politiques RLS du projet Supabase commun ;
-- les PDF originaux ne doivent jamais être modifiés par une extraction : toute extraction future crée une nouvelle copie.
+- les opérations Admin sont protégées par l’authentification et les politiques RLS du projet Supabase commun ;
+- les PDF originaux ne doivent jamais être modifiés par une extraction : toute extraction future crée une nouvelle copie ;
+- les remplacements de médias audio suivent l’ordre upload nouveau → mise à jour SQL → suppression ancien ; en cas d’échec, les nouveaux fichiers sont nettoyés et les fichiers encore référencés restent intacts.
 
 ## Workflow d’un nouveau PDF
 
@@ -83,6 +86,33 @@ Les champs facultatifs sont des indications prioritaires mais ne remplacent pas 
 8. Réévaluer la pertinence thématique globale si le nouvel ouvrage modifie le classement.
 9. Vérifier le Répertoire des thèmes, les filtres, exclusions et deux modes de recherche.
 10. Relier l’URL privée / signée du PDF au document lorsque le parcours de consultation le permet.
+
+## Vérifications de la fusion — 4 septembre 2026
+
+Le projet Supabase commun `La forêt enchantée` a été restauré puis vérifié `ACTIVE_HEALTHY`.
+
+État historique préservé après migration :
+
+- 3 audios et 3 fichiers audio ;
+- 3 images de couverture ;
+- 2 catégories et 2 sous-catégories ;
+- 2 articles et 3 images de blog ;
+- 1 compte Auth historique, conservé comme administrateur commun.
+
+État Wikignose après intégration :
+
+- `app_admins` : 1 administrateur ;
+- `wikignose_pending_documents` : 0 document au démarrage ;
+- bucket privé `wikignose-pdfs` créé et vide au démarrage.
+
+Tests RLS réalisés :
+
+- avec l’identité de l’administrateur historique, une insertion temporaire dans la file Wikignose est autorisée ;
+- avec un utilisateur authentifié non administrateur, la même insertion est refusée par PostgreSQL ;
+- un visiteur anonyme conserve la lecture des contenus publics historiques ;
+- le visiteur anonyme ne peut pas lire `wikignose_pending_documents` et ne voit aucun objet du bucket privé Wikignose.
+
+Les écritures de test autorisées ont été exécutées dans une transaction annulée afin de ne laisser aucune donnée de test.
 
 ## Source historique
 
