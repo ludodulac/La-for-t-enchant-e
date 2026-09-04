@@ -16,7 +16,8 @@ async function getSession() {
 async function requireAuth() {
   const session = await getSession();
   if (!session) {
-    window.location.href = 'login.html';
+    const target = location.pathname.split('/').pop() === 'wikignose-admin.html' ? 'wikignose-admin.html' : 'admin.html';
+    window.location.href = `login.html?next=${encodeURIComponent(target)}`;
     return null;
   }
 
@@ -24,7 +25,8 @@ async function requireAuth() {
   if (error || isAdmin !== true) {
     console.warn('Accès administration refusé', error || 'Compte non autorisé');
     await dbClient.auth.signOut();
-    window.location.href = 'login.html?unauthorized=1';
+    const target = location.pathname.split('/').pop() === 'wikignose-admin.html' ? 'wikignose-admin.html' : 'admin.html';
+    window.location.href = `login.html?unauthorized=1&next=${encodeURIComponent(target)}`;
     return null;
   }
   return session;
@@ -40,7 +42,7 @@ function loadAdminScript(src) {
   });
 }
 
-const isAdminPage = location.pathname.endsWith('/admin.html') || location.pathname.endsWith('admin.html');
+const isAdminPage = location.pathname.split('/').pop() === 'admin.html';
 
 if (isAdminPage) {
   document.documentElement.classList.add('admin-auth-pending');
@@ -67,7 +69,7 @@ if (isAdminPage) {
         <div>
           <div class="eyebrow">Studio de publication</div>
           <h1>Gérer La Forêt Enchantée</h1>
-          <p>Histoires, journal et catégories sont réunis ici. L’outil documentaire Wikignose partage ce back-office sans faire partie de l’expérience jeunesse publique.</p>
+          <p>Histoires, journal et catégories sont réunis ici. Wikignose dispose désormais aussi de sa propre interface d’administration dédiée.</p>
         </div>
         <div class="admin-search">
           <input id="admin-global-search" type="search" placeholder="Filtrer les éléments affichés…" aria-label="Filtrer les contenus de l’administration">
@@ -77,8 +79,6 @@ if (isAdminPage) {
     }
 
     try {
-      // La couche de sécurité Blog est prioritaire : l’interface ne devient visible
-      // qu’une fois les interceptions de formulaires et rendus sûrs installés.
       await loadAdminScript('js/admin-blog-safety.js');
       await Promise.all([
         loadAdminScript('js/admin-ux.js'),
