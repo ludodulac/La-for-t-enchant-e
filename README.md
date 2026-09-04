@@ -1,162 +1,46 @@
-# 🌲 La Forêt Enchantée — Bibliothèque audio jeunesse
+# La Forêt Enchantée
 
-Bibliothèque audio pour enfants, hébergée sur **GitHub Pages** et alimentée par **Supabase**.
+La Forêt Enchantée est une médiathèque personnelle audio construite en HTML, CSS et JavaScript avec Supabase pour les données, l’authentification et le stockage.
 
----
+Le dépôt contient également **Wikignose**, désormais intégré comme module de recherche documentaire dans la même application et le même back-office.
 
-## ✨ Fonctionnalités
+## Surfaces principales
 
-- **Visiteurs** : parcourir les catégories, rechercher une histoire, écouter avec un lecteur audio moderne (play/pause, seek, volume, ±15s)
-- **Administrateur** : ajouter / modifier / supprimer des audios et des catégories, upload des fichiers vers Supabase Storage
-- **Sans compte visiteur** : aucune inscription requise
-- **Responsive** : mobile et ordinateur
+- `index.html` — médiathèque audio ;
+- `audio.html?id=…` — fiche et lecteur d’une histoire ;
+- `wikignose.html` — recherche documentaire Wikignose ;
+- `blog.html` / `article.html` — journal ;
+- `login.html` / `admin.html` — administration commune.
 
----
+## Backend commun
 
-## 🗂 Structure des fichiers
+Le projet Supabase de référence est **La forêt enchantée** (`jwyayfkssyagvnablttg`).
 
-```
-foret-enchantee/
-├── index.html           ← Accueil (catégories + recherche)
-├── audio.html           ← Fiche de lecture d'un audio
-├── login.html           ← Connexion administrateur
-├── admin.html           ← Tableau de bord admin
-├── css/
-│   └── style.css        ← Design complet
-├── js/
-│   ├── supabase.js      ← Configuration Supabase ← À MODIFIER
-│   ├── auth.js          ← Authentification
-│   ├── app.js           ← Logique visiteurs
-│   ├── audio.js         ← Lecteur audio
-│   └── admin.js         ← Logique administration
-├── supabase-setup.sql   ← Script SQL à exécuter dans Supabase
-└── README.md
-```
+Il conserve les données historiques de la médiathèque et du blog et héberge désormais aussi le backend Wikignose. Les comptes administrateurs autorisés sont centralisés dans `public.app_admins` et les PDF Wikignose sont stockés dans le bucket privé `wikignose-pdfs`.
 
----
+Les migrations de la fusion sont versionnées dans `supabase/migrations/`.
 
-## 🚀 Installation pas à pas
+## Wikignose
 
-### Étape 1 — Créer un projet Supabase
+La logique, l’index et les règles d’indexation Wikignose sont maintenant maintenus ici. Voir [`docs/WIKIGNOSE.md`](docs/WIKIGNOSE.md).
 
-1. Rendez-vous sur [https://supabase.com](https://supabase.com) et créez un compte gratuit.
-2. Cliquez sur **New project**, choisissez un nom et une région proche de la France (ex : `eu-west-1`).
-3. Notez le **mot de passe de base de données** (vous en aurez besoin si vous administrez la BDD directement).
+L’ancien dépôt `ludodulac/Wikignose` est conservé uniquement comme archive historique.
 
----
+## Sécurité et intégrité des médias
 
-### Étape 2 — Exécuter le script SQL
+Les visiteurs gardent un accès en lecture aux contenus publics. Les écritures sont réservées aux comptes présents dans `app_admins` via les politiques RLS.
 
-1. Dans le tableau de bord Supabase, allez dans **SQL Editor** > **New query**.
-2. Copiez-collez intégralement le contenu du fichier `supabase-setup.sql`.
-3. Cliquez sur **Run** (ou `Ctrl+Entrée`).
+Pour les audios, les remplacements suivent l’ordre **upload nouveau → mise à jour SQL → suppression ancien**. Une erreur de base ne doit donc plus supprimer un fichier encore référencé.
 
-Vous verrez se créer :
-- Les tables `categories`, `subcategories`, `audios`
-- Les catégories initiales (Contes traditionnels, Contes esséniens…)
-- Les politiques RLS (sécurité)
-- Les buckets Storage `images` et `audios`
+## Développement
 
-> ⚠️ Si les politiques Storage génèrent une erreur (ex : policy already exists), ignorez ces erreurs — les buckets ont été créés. Vérifiez manuellement dans **Storage** que `images` et `audios` sont bien là et marqués **public**.
+Le site reste volontairement léger : pas de framework applicatif ni de dépendance de build obligatoire.
 
----
+Un workflow GitHub Actions vérifie :
 
-### Étape 3 — Récupérer les clés Supabase
+- la syntaxe des fichiers JavaScript ;
+- la présence des surfaces Wikignose et administration ;
+- la présence des migrations Supabase communes ;
+- l’absence de référence active à l’ancien projet Supabase Wikignose.
 
-1. Dans le tableau de bord Supabase, allez dans **Settings** (icône engrenage) > **API**.
-2. Copiez :
-   - **Project URL** (ex : `https://abcdefgh.supabase.co`)
-   - **anon public key** (longue chaîne commençant par `eyJ…`)
-
----
-
-### Étape 4 — Configurer le projet
-
-Ouvrez le fichier `js/supabase.js` et remplacez les deux valeurs :
-
-```js
-const SUPABASE_URL     = 'https://VOTRE_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'VOTRE_ANON_KEY';
-```
-
-**⚠️ Attention** : la `anon key` est publique par conception (Supabase la rend publique), mais les politiques RLS empêchent les visiteurs d'écrire ou de supprimer des données. Ne partagez jamais votre `service_role key`.
-
----
-
-### Étape 5 — Créer le compte administrateur
-
-1. Dans le tableau de bord Supabase, allez dans **Authentication** > **Users** > **Add user**.
-2. Entrez votre adresse e-mail et un mot de passe fort.
-3. Cliquez sur **Create user**.
-
-C'est tout. Vous pourrez vous connecter sur `login.html` avec ces identifiants.
-
----
-
-### Étape 6 — Publier sur GitHub Pages
-
-#### Option A — Interface GitHub (la plus simple)
-
-1. Créez un nouveau dépôt sur [github.com](https://github.com) (ex : `foret-enchantee`).
-2. Uploadez tous les fichiers du projet (glisser-déposer dans l'interface web).
-3. Allez dans **Settings** > **Pages**.
-4. Sous **Source**, sélectionnez la branche `main` et le dossier `/ (root)`.
-5. Cliquez sur **Save**.
-
-Votre site sera disponible à l'adresse :
-```
-https://VOTRE-NOM-UTILISATEUR.github.io/foret-enchantee/
-```
-
-#### Option B — Via Git en ligne de commande
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/VOTRE-NOM/foret-enchantee.git
-git push -u origin main
-# Puis activer GitHub Pages dans Settings > Pages
-```
-
----
-
-### Étape 7 — Vérification finale
-
-Checklist :
-- [ ] Le site s'affiche sur l'URL GitHub Pages
-- [ ] Les catégories apparaissent sur la page d'accueil
-- [ ] La connexion admin fonctionne sur `/login.html`
-- [ ] L'ajout d'un audio fonctionne (upload + apparition dans la liste)
-- [ ] Le lecteur audio se lit correctement
-
----
-
-## 🎨 Personnalisation
-
-### Changer les couleurs
-Dans `css/style.css`, modifiez les variables CSS en haut du fichier (section `:root`).
-
-### Ajouter une catégorie
-Depuis l'interface admin (`/admin.html`) > onglet **Catégories** > **Ajouter une catégorie**.
-
-### Modifier le titre du site
-Cherchez `La Forêt Enchantée` dans les fichiers HTML et remplacez par votre titre.
-
----
-
-## ❓ Dépannage fréquent
-
-| Problème | Solution |
-|---|---|
-| Les données ne s'affichent pas | Vérifiez `SUPABASE_URL` et `SUPABASE_ANON_KEY` dans `js/supabase.js` |
-| Erreur de connexion admin | Vérifiez que l'utilisateur existe dans Supabase Auth > Users |
-| Les images/sons ne se chargent pas | Vérifiez que les buckets `images` et `audios` sont bien **public** dans Storage |
-| Erreur RLS | Vérifiez que les politiques ont bien été créées via le script SQL |
-| Upload échoue | Vérifiez les politiques Storage pour le rôle `authenticated` |
-
----
-
-## 📄 Licence
-
-Projet libre — à utiliser et adapter librement.
+Les changements de la refonte premium et de l’intégration Wikignose sont préparés dans une branche dédiée avant fusion vers `main`.
