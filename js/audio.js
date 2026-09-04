@@ -1,3 +1,36 @@
+const AUDIO_STORAGE = {
+  progress: 'forestAudioProgress',
+  recent: 'forestRecentAudios'
+};
+let activeAudioId = null;
+
+function readLocalJson(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+function writeLocalJson(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) { console.warn('Stockage local indisponible', error); }
+}
+function recordRecentAudio(id) {
+  const current = readLocalJson(AUDIO_STORAGE.recent, []);
+  const next = [String(id), ...current.filter(existing => String(existing) !== String(id))].slice(0, 30);
+  writeLocalJson(AUDIO_STORAGE.recent, next);
+}
+function storedProgress(id) {
+  return readLocalJson(AUDIO_STORAGE.progress, {})[String(id)] || null;
+}
+function saveProgress(id, currentTime, duration, completed = false) {
+  if (!id || !Number.isFinite(currentTime)) return;
+  const map = readLocalJson(AUDIO_STORAGE.progress, {});
+  if (completed || (duration && currentTime >= duration - 5)) delete map[String(id)];
+  else map[String(id)] = { time: currentTime, duration: Number(duration || 0), updatedAt: Date.now() };
+  writeLocalJson(AUDIO_STORAGE.progress, map);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('back-button').addEventListener('click', () => {
     if (document.referrer && document.referrer.includes(location.hostname)) history.back();
@@ -14,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     .single();
 
   if (error || !audio) return showError('Cette histoire est introuvable.');
+  activeAudioId = audio.id;
   renderAudio(audio);
 });
 
@@ -27,10 +61,10 @@ function renderAudio(item) {
   document.getElementById('audio-cat').textContent = [item.categories?.name, item.subcategories?.name].filter(Boolean).join(' · ') || 'La Forêt Enchantée';
   document.getElementById('audio-desc').textContent = item.description || 'Installe-toi confortablement et laisse l’histoire commencer.';
   if (!src) return showError('Le fichier audio n’est pas disponible.');
-  buildPlayer(src, item.duration);
+  buildPlayer(src, item.duration, item.id);
 }
 
-function buildPlayer(src, durationHint) {
+function buildPlayer(src, durationHint, id) {
   const zone = document.getElementById('player-zone');
   zone.innerHTML = `<div class="full-player">
     <audio id="audio-element" preload="metadata"></audio>
@@ -44,6 +78,7 @@ function buildPlayer(src, durationHint) {
   const progress = document.getElementById('progress-bar');
   const current = document.getElementById('time-current');
   const total = document.getElementById('time-total');
+  let lastSavedSecond = -1;
   audio.src = src;
 
   const sync = () => {
@@ -55,18 +90,33 @@ function buildPlayer(src, durationHint) {
     play.textContent = audio.paused ? '▶' : 'Ⅱ';
     play.setAttribute('aria-label', audio.paused ? 'Lecture' : 'Pause');
   };
+  const persist = force => {
+    const second = Math.floor(audio.currentTime || 0);
+    if (!force && second === lastSavedSecond) return;
+    lastSavedSecond = second;
+    saveProgress(id, audio.currentTime || 0, Number.isFinite(audio.duration) ? audio.duration : Number(durationHint || 0));
+  };
 
-  audio.addEventListener('loadedmetadata', sync);
-  audio.addEventListener('timeupdate', sync);
-  audio.addEventListener('play', sync);
-  audio.addEventListener('pause', sync);
-  audio.addEventListener('ended', sync);
-  play.addEventListener('click', () => audio.paused ? audio.play() : audio.pause());
-  document.getElementById('rewind').addEventListener('click', () => audio.currentTime = Math.max(0, audio.currentTime - 15));
-  document.getElementById('forward').addEventListener('click', () => audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + 15));
-  progress.addEventListener('input', () => audio.currentTime = Number(progress.value));
-  document.getElementById('volume').addEventListener('input', event => audio.volume = Number(event.target.value));
-  document.getElementById('speed').addEventListener('change', event => audio.playbackRate = Number(event.target.value));
+  audio.addEventListener('loadedmetadata', () => {
+    const saved = storedProgress(id);
+    if (saved?.time > 3 && saved.time < audio.duration - 3) audio.currentTime = saved.time;
+    sync();
+  });
+  audio.addEventListener('timeupdate', () => { sync(); persist(false); });
+  audio.addEventListener('play', () => { recordRecentAudio(id); sync(); });
+  audio.addEventListener('pause', () => { persist(true); sync(); });
+  audio.addEventListener('ended', () => { saveProgress(id, audio.currentTime || 0, audio.duration || 0, true); sync(); });
+  window.addEventListener('pagehide', () => persist(true));
+
+  play.addEventListener('click', () => {
+    if (audio.paused) audio.play().catch(error => console.error('Lecture impossible', error));
+    else audio.pause();
+  });
+  document.getElementById('rewind').addEventListener('click', () => { audio.currentTime = Math.max(0, audio.currentTime - 15); });
+  document.getElementById('forward').addEventListener('click', () => { audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + 15); });
+  progress.addEventListener('input', () => { audio.currentTime = Number(progress.value); });
+  document.getElementById('volume').addEventListener('input', event => { audio.volume = Number(event.target.value); });
+  document.getElementById('speed').addEventListener('change', event => { audio.playbackRate = Number(event.target.value); });
 }
 
 function showError(message) {
