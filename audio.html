@@ -3,61 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#09100d">
   <title>Écouter — La Forêt Enchantée</title>
-  <meta name="description" content="Écouter une histoire dans la Forêt Enchantée.">
+  <meta name="description" content="Écouter une histoire dans La Forêt Enchantée.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;750&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app-2026.css">
 </head>
-<body>
+<body class="media-app">
+  <main class="audio-detail-shell" id="player-container">
+    <header class="detail-topbar">
+      <button class="detail-back" id="back-button" type="button">← Bibliothèque</button>
+      <a class="detail-brand" href="index.html">La Forêt Enchantée</a>
+      <span aria-hidden="true"></span>
+    </header>
 
-  <!-- ── En-tête minimal ───────────────────────────────────── -->
-  <header class="site-header">
-    <div class="header-inner">
-      <a href="index.html" class="site-logo" title="Accueil">
-        <span>🌲</span> La Forêt Enchantée
-      </a>
-    </div>
-  </header>
-
-  <!-- ── Fiche audio ────────────────────────────────────────── -->
-  <main class="audio-page" id="player-container">
-
-    <!-- Fil d'Ariane -->
-    <div class="breadcrumb" id="breadcrumb">
-      <span class="bc-item bc-link" onclick="goHome()">🏠 Accueil</span>
-      <span class="bc-sep">›</span>
-      <span class="bc-item active">Chargement…</span>
-    </div>
-
-    <!-- Bouton retour -->
-    <button class="btn-back" onclick="goBack()">← Retour</button>
-
-    <!-- Couverture + infos -->
-    <div class="audio-hero">
-      <div class="audio-hero-cover" id="audio-cover"></div>
-      <div class="audio-hero-info">
-        <div class="audio-page-cat" id="audio-cat"></div>
-        <h1 class="audio-page-title" id="audio-title">Chargement…</h1>
-        <p class="audio-page-desc" id="audio-desc"></p>
+    <section class="detail-grid" aria-live="polite">
+      <div class="detail-art" id="detail-art"><div class="cover-placeholder">⌁</div></div>
+      <div class="detail-copy">
+        <div class="detail-eyebrow" id="audio-cat">Chargement</div>
+        <h1 id="audio-title">Une histoire de la forêt</h1>
+        <p class="detail-description" id="audio-desc"></p>
+        <div id="player-zone"><div class="status-message">Préparation de l’écoute…</div></div>
       </div>
-    </div>
-
-    <!-- Lecteur (construit par audio.js) -->
-    <div id="player-zone"></div>
-
+    </section>
   </main>
 
-  <!-- ── Pied de page ──────────────────────────────────────── -->
-  <footer class="site-footer">
-    <p>🌲 La Forêt Enchantée — Histoires et contes pour les enfants</p>
-  </footer>
-
-  <!-- ── Scripts ───────────────────────────────────────────── -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase.js"></script>
   <script src="js/audio.js"></script>
-
 </body>
 </html>
