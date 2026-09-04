@@ -30,6 +30,16 @@ async function requireAuth() {
   return session;
 }
 
+function loadAdminScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.addEventListener('load', () => resolve(src), { once: true });
+    script.addEventListener('error', () => reject(new Error(`Impossible de charger ${src}`)), { once: true });
+    document.body.appendChild(script);
+  });
+}
+
 const isAdminPage = location.pathname.endsWith('/admin.html') || location.pathname.endsWith('admin.html');
 
 if (isAdminPage) {
@@ -38,7 +48,6 @@ if (isAdminPage) {
   gateStyle.textContent = '.admin-auth-pending body{visibility:hidden}';
   document.head.appendChild(gateStyle);
 
-  // Promise partagée par les extensions du back-office.
   window.adminSessionPromise = requireAuth();
 
   const css = document.createElement('link');
@@ -50,7 +59,6 @@ if (isAdminPage) {
     const session = await window.adminSessionPromise;
     if (!session) return;
 
-    document.documentElement.classList.remove('admin-auth-pending');
     const wrap = document.querySelector('.admin-wrap');
     if (wrap && !document.querySelector('.admin-intro')) {
       const intro = document.createElement('section');
@@ -68,10 +76,19 @@ if (isAdminPage) {
       wrap.prepend(intro);
     }
 
-    for (const src of ['js/admin-ux.js', 'js/admin-blog-safety.js', 'js/admin-wikignose.js']) {
-      const script = document.createElement('script');
-      script.src = src;
-      document.body.appendChild(script);
+    try {
+      // La couche de sécurité Blog est prioritaire : l’interface ne devient visible
+      // qu’une fois les interceptions de formulaires et rendus sûrs installés.
+      await loadAdminScript('js/admin-blog-safety.js');
+      await Promise.all([
+        loadAdminScript('js/admin-ux.js'),
+        loadAdminScript('js/admin-wikignose.js')
+      ]);
+      document.documentElement.classList.remove('admin-auth-pending');
+    } catch (error) {
+      console.error('Initialisation du back-office incomplète', error);
+      document.body.innerHTML = '<main style="padding:3rem;font-family:Inter,sans-serif;color:#fff;background:#09100d;min-height:100vh"><h1>Administration indisponible</h1><p>Une composante de sécurité ou d’interface n’a pas pu être chargée. Recharge la page avant toute modification.</p></main>';
+      document.documentElement.classList.remove('admin-auth-pending');
     }
   });
 }
