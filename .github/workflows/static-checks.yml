@@ -44,6 +44,8 @@ jobs:
           test -f supabase/migrations/20260904_wikignose_module.sql
           test -f supabase/migrations/20260904_unify_admin_permissions.sql
           test -f supabase/migrations/20260904_add_fk_indexes.sql
+          test -f supabase/migrations/20260904_wikignose_pdf_sha256.sql
+          test -f supabase/migrations/20260904_consolidate_article_select_policies.sql
       - name: Check public page contracts
         shell: bash
         run: |
@@ -71,6 +73,8 @@ jobs:
           set -euo pipefail
           grep -q 'name="robots" content="noindex, nofollow"' wikignose.html
           grep -q 'Outils · Wikignose' index.html
+          grep -q 'sha256File' js/admin-wikignose.js
+          grep -q 'data-wg-delete' js/admin-wikignose.js
           if grep -q 'aria-label="Ouvrir Wikignose"' index.html; then
             echo 'Wikignose ne doit pas redevenir une action principale de la médiathèque.' >&2
             exit 1
