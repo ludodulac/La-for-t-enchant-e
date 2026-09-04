@@ -1,0 +1,38 @@
+name: Static checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - redesign/premium-media-library
+
+permissions:
+  contents: read
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in js/*.js data/*.js; do
+            [ -f "$file" ] || continue
+            node --check "$file"
+          done
+      - name: Check required integrated surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f index.html
+          test -f admin.html
+          test -f wikignose.html
+          test -f js/wikignose.js
+          test -f js/admin-wikignose.js
+          test -f data/wikignose-index.js
+          test -f docs/WIKIGNOSE.md
+          test -f supabase/migrations/20260904_wikignose_module.sql
+          test -f supabase/migrations/20260904_unify_admin_permissions.sql
