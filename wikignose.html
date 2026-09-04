@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#09100d">
+  <title>Wikignose — La Forêt Enchantée</title>
+  <meta name="description" content="Recherche documentaire dans les enseignements indexés de La Forêt Enchantée.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;750&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app-2026.css">
+  <link rel="stylesheet" href="css/wikignose.css">
+</head>
+<body class="media-app wikignose-app">
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navigation principale">
+      <a class="brand" href="index.html" aria-label="La Forêt Enchantée — accueil">
+        <span class="brand-mark" aria-hidden="true">⌁</span><span>La Forêt Enchantée</span>
+      </a>
+      <nav class="nav-group">
+        <a class="nav-button nav-anchor" href="index.html"><span class="nav-icon">◫</span><span class="nav-label">Médiathèque</span></a>
+        <a class="nav-button active nav-anchor" href="wikignose.html" aria-current="page"><span class="nav-icon">⌕</span><span class="nav-label">Wikignose</span></a>
+        <a class="nav-button nav-anchor" href="blog.html"><span class="nav-icon">✦</span><span class="nav-label">Journal</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <a class="sidebar-link" href="login.html">Administration</a>
+      </div>
+    </aside>
+
+    <main class="main-surface wikignose-surface">
+      <div class="topbar wikignose-topbar">
+        <div>
+          <div class="eyebrow">Recherche documentaire</div>
+          <strong>Wikignose</strong>
+        </div>
+        <button id="themesToggle" class="wg-secondary" type="button" aria-expanded="false">Répertoire des thèmes</button>
+      </div>
+
+      <section class="page-head wikignose-head" aria-labelledby="page-title">
+        <div>
+          <div class="eyebrow">Une application de La Forêt Enchantée</div>
+          <h1 id="page-title">Retrouver un enseignement</h1>
+          <p class="page-subtitle">Cherchez un thème, une expression, un maître ou un courant dans les documents déjà indexés. La recherche reste locale : aucune IA distante n’est nécessaire pour consulter la bibliothèque.</p>
+          <div id="corpus-stats" class="content-stats" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="wg-search-panel" aria-label="Recherche Wikignose">
+        <div class="wg-mode" role="group" aria-label="Mode de recherche">
+          <button id="modeThemes" class="wg-mode-button active" type="button" data-mode="themes">Pertinence du thème</button>
+          <button id="modeOccurrences" class="wg-mode-button" type="button" data-mode="occurrences">Occurrences exactes</button>
+        </div>
+        <p id="modeHelp" class="wg-help">Classe les résultats selon l’importance du thème dans les chapitres et passages déjà analysés.</p>
+
+        <label class="wg-label" for="query">Recherche</label>
+        <div class="search-field wg-main-search">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input id="query" type="search" placeholder="Ex. préparation intérieure avant de commencer une œuvre" autocomplete="off">
+        </div>
+
+        <div class="wg-filters">
+          <div>
+            <label class="wg-label" for="exclude">Exclure</label>
+            <input class="wg-input" id="exclude" type="text" placeholder="Ex. Steiner, prophétie">
+          </div>
+          <div>
+            <label class="wg-label" for="masterFilter">Maître / courant</label>
+            <select class="wg-input" id="masterFilter"><option value="">Tous</option></select>
+          </div>
+        </div>
+        <button id="searchButton" class="wg-primary" type="button">Rechercher</button>
+      </section>
+
+      <section id="themesPanel" class="wg-panel" hidden>
+        <div class="wg-panel-heading">
+          <div><h2>Répertoire des thèmes</h2><p>Généré automatiquement à partir de l’index documentaire.</p></div>
+          <button id="closeThemes" class="wg-secondary" type="button">Fermer</button>
+        </div>
+        <input id="themeFilter" class="wg-input" type="search" placeholder="Filtrer les thèmes…">
+        <div id="themeDirectory" class="wg-theme-directory"></div>
+      </section>
+
+      <section class="wg-results-section">
+        <div class="wg-results-heading"><h2>Résultats</h2><span id="resultCount" class="wg-muted"></span></div>
+        <div id="results" class="wg-results"><div class="wg-empty">Saisissez un thème ou une question pour commencer.</div></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="data/wikignose-index.js"></script>
+  <script src="js/wikignose.js"></script>
+</body>
+</html>
