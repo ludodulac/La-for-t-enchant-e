@@ -42,7 +42,9 @@ L’arrivée de nouveaux documents peut justifier une réévaluation comparative
 
 ### Occurrences
 
-Recherche documentaire et mécanique d’un mot ou groupe de mots réellement présent dans un index lexical ou du texte indexé.
+Ce mode est strictement documentaire : il ne cherche que dans `section.text` et `section.occurrenceTerms`, c’est-à-dire dans du texte ou un index lexical réellement disponible. Les titres, thèmes, aliases et résumés ne servent jamais de substitution à une occurrence réelle.
+
+Le corpus historique actuellement migré contient **2 ouvrages, 17 sections thématiques et 0 section avec index lexical**. Le mode Occurrences peut donc légitimement retourner zéro résultat tant qu’un index lexical n’a pas été produit. L’interface l’indique explicitement au lieu de fabriquer une précision à partir des métadonnées.
 
 L’ajout d’un nouveau PDF ne doit pas provoquer le recalcul inutile de l’index d’occurrences des anciens documents.
 
@@ -59,6 +61,8 @@ Le premier portage depuis le dépôt historique contient deux ouvrages et leur s
 - `L’École Essénienne — Origine, mission et but` ;
 - `L’Appel de la Lumière`.
 
+Ces deux ouvrages représentent 17 sections thématiques. Aucune de ces sections ne possède encore `text` ou `occurrenceTerms`, donc elles alimentent la pertinence thématique mais pas le mode Occurrences.
+
 Les noms historiques des PDF sont conservés dans `legacyFile`. Les fichiers PDF eux-mêmes n’étaient pas présents dans le dépôt GitHub Wikignose au moment de la fusion, donc aucun faux lien de téléchargement n’est affiché. Lorsqu’un PDF est remis dans le stockage privé commun, son URL doit être rattachée au document sans supprimer sa référence historique.
 
 ## Administration commune
@@ -71,8 +75,11 @@ Le module Admin permet :
 - d’ajouter titre, cours / volume, école, courant et maîtres / auteurs facultatifs ;
 - de stocker les fichiers dans le bucket privé `wikignose-pdfs` ;
 - de créer une entrée dans `wikignose_pending_documents` ;
-- de retirer un ouvrage de la file avec nettoyage du PDF privé ;
-- de calculer une empreinte SHA-256 avant upload afin de refuser le même contenu envoyé sous un autre nom.
+- de calculer une empreinte SHA-256 avant upload afin de refuser le même contenu envoyé sous un autre nom ;
+- de retirer un document `pending` ou `error` avec nettoyage du PDF privé ;
+- de conserver les documents `indexing`, `indexed` et `archived` dans un registre d’ingestion durable afin que leur SHA-256 continue d’empêcher une réimportation ultérieure.
+
+La table garde son nom historique `wikignose_pending_documents`, mais elle sert désormais de registre d’ingestion et de statuts, pas seulement de file temporaire.
 
 La colonne `sha256` est protégée par un index unique partiel : une seconde insertion du même document est également refusée au niveau PostgreSQL, ce qui couvre les envois concurrents.
 
@@ -87,12 +94,13 @@ Les comptes autorisés sont inscrits dans `public.app_admins`. La fonction `publ
 - les opérations Admin sont protégées par l’authentification et les politiques RLS du projet Supabase commun ;
 - les PDF originaux ne doivent jamais être modifiés par une extraction : toute extraction future crée une nouvelle copie ;
 - un échec d’insertion après upload déclenche le nettoyage du nouveau PDF ;
-- un retrait de file supprime d’abord la ligne SQL puis tente le nettoyage Storage, afin de ne jamais conserver une référence vers un fichier déjà supprimé ;
+- un retrait autorisé du registre supprime d’abord la ligne SQL puis tente le nettoyage Storage, afin de ne jamais conserver une référence vers un fichier déjà supprimé ;
+- les documents déjà en indexation, indexés ou archivés ne sont pas supprimables via l’action ordinaire du back-office ;
 - les remplacements de médias audio suivent l’ordre upload nouveau → mise à jour SQL → suppression ancien ; en cas d’échec, les nouveaux fichiers sont nettoyés et les fichiers encore référencés restent intacts.
 
 ## Workflow d’un nouveau PDF
 
-1. Calculer son SHA-256 et vérifier qu’il n’est pas déjà présent dans la file.
+1. Calculer son SHA-256 et vérifier qu’il n’est pas déjà présent dans le registre.
 2. Le déposer dans le stockage privé depuis l’Admin.
 3. Identifier ses métadonnées fiables.
 4. Délimiter chapitres et pages.
@@ -101,7 +109,8 @@ Les comptes autorisés sont inscrits dans `public.app_admins`. La fonction `publ
 7. Ajouter le document dans `data/wikignose-index.js` sans supprimer les anciens.
 8. Réévaluer la pertinence thématique globale si le nouvel ouvrage modifie le classement.
 9. Vérifier le Répertoire des thèmes, les filtres, exclusions et deux modes de recherche.
-10. Relier l’URL privée / signée du PDF au document lorsque le parcours de consultation le permet.
+10. Passer le registre au statut adapté (`indexing`, puis `indexed` ou `error`) et conserver l’empreinte SHA-256.
+11. Relier l’URL privée / signée du PDF au document lorsque le parcours de consultation le permet.
 
 ## Vérifications de la fusion — 4 septembre 2026
 
@@ -118,13 +127,14 @@ Le projet Supabase commun `La forêt enchantée` a été restauré puis vérifi�
 État Wikignose après intégration :
 
 - `app_admins` : 1 administrateur ;
-- `wikignose_pending_documents` : 0 document au démarrage et toujours 0 après les tests transactionnels ;
+- registre `wikignose_pending_documents` : 0 document au démarrage et toujours 0 après les tests transactionnels ;
 - bucket privé `wikignose-pdfs` créé et vide au démarrage ;
-- colonne `sha256` et index unique de déduplication actifs.
+- colonne `sha256` et index unique de déduplication actifs ;
+- corpus local : 2 ouvrages, 17 sections thématiques, 0 section avec index lexical.
 
 Tests RLS réalisés :
 
-- avec l’identité de l’administrateur historique, une insertion temporaire dans la file Wikignose est autorisée ;
+- avec l’identité de l’administrateur historique, une insertion temporaire dans le registre Wikignose est autorisée ;
 - avec un utilisateur authentifié non administrateur, la même insertion est refusée par PostgreSQL ;
 - un visiteur anonyme conserve la lecture des contenus publics historiques ;
 - le visiteur anonyme ne peut pas lire `wikignose_pending_documents` et ne voit aucun objet du bucket privé Wikignose.
