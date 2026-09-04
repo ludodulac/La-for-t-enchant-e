@@ -44,6 +44,18 @@ jobs:
           test -f supabase/migrations/20260904_wikignose_module.sql
           test -f supabase/migrations/20260904_unify_admin_permissions.sql
           test -f supabase/migrations/20260904_add_fk_indexes.sql
+      - name: Check public page contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'id="main-content"' index.html
+          grep -q 'id="mini-player"' index.html
+          grep -q 'id="blog-grid"' blog.html
+          grep -q 'id="blog-filters"' blog.html
+          grep -q 'id="article-content"' article.html
+          grep -q 'id="article-bc-title"' article.html
+          grep -q 'js/blog.js' blog.html
+          grep -q 'js/blog.js' article.html
       - name: Check Supabase project consistency
         shell: bash
         run: |
