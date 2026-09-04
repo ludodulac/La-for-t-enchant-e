@@ -10,6 +10,49 @@
     if (error) console.warn('Nettoyage blog-images incomplet', error);
   }
 
+  function inlinePathsFromHtml(html = '') {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const markers = [
+      '/storage/v1/object/public/blog-images/',
+      '/storage/v1/object/sign/blog-images/'
+    ];
+    const paths = [];
+
+    template.content.querySelectorAll('img[src]').forEach(img => {
+      const src = img.getAttribute('src') || '';
+      for (const marker of markers) {
+        const index = src.indexOf(marker);
+        if (index === -1) continue;
+        const raw = src.slice(index + marker.length).split(/[?#]/)[0];
+        let path = raw;
+        try { path = decodeURIComponent(raw); } catch {}
+        if (path.startsWith('inline/')) paths.push(path);
+        break;
+      }
+    });
+
+    return [...new Set(paths)];
+  }
+
+  async function pathIsStillReferenced(path) {
+    const [coverRef, contentRef] = await Promise.all([
+      dbClient.from('articles').select('id').eq('cover_path', path).limit(1),
+      dbClient.from('articles').select('id').ilike('content', `%${path}%`).limit(1)
+    ]);
+    if (coverRef.error || contentRef.error) {
+      console.warn('Vérification de référence blog incomplète', coverRef.error || contentRef.error);
+      return true;
+    }
+    return Boolean(coverRef.data?.length || contentRef.data?.length);
+  }
+
+  async function removeUnreferencedPaths(paths) {
+    for (const path of [...new Set(paths.filter(Boolean))]) {
+      if (!(await pathIsStillReferenced(path))) await removePaths([path]);
+    }
+  }
+
   async function uploadCover(file, title) {
     if (!file) return null;
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
@@ -87,10 +130,17 @@
       const content = quillEdit.root.innerHTML;
       if (!title) return showNotif('Titre requis.', 'error');
 
-      const art = articles.find(article => article.id === id);
-      if (!art) return showNotif('Article introuvable.', 'error');
+      const { data: original, error: originalError } = await dbClient
+        .from('articles')
+        .select('id, cover_path, content, published_at')
+        .eq('id', id)
+        .single();
+      if (originalError || !original) return showNotif('Article introuvable.', 'error');
 
-      const previousCover = art.cover_path || null;
+      const previousCover = original.cover_path || null;
+      const previousInline = inlinePathsFromHtml(original.content || '');
+      const nextInline = inlinePathsFromHtml(content);
+      const removedInline = previousInline.filter(path => !nextInline.includes(path));
       let newCover = null;
 
       try {
@@ -103,13 +153,14 @@
           content,
           cover_path: nextCover,
           published,
-          published_at: published ? (art.published_at ?? new Date().toISOString()) : null,
+          published_at: published ? (original.published_at ?? new Date().toISOString()) : null,
         }).eq('id', id);
         if (error) throw error;
 
-        if (newCover && previousCover && previousCover !== newCover) {
-          await removePaths([previousCover]);
-        }
+        const cleanupCandidates = [...removedInline];
+        if (newCover && previousCover && previousCover !== newCover) cleanupCandidates.push(previousCover);
+        if (cleanupCandidates.length) await removeUnreferencedPaths(cleanupCandidates);
+
         newCover = null;
         showNotif('Article modifié ✓');
         document.getElementById('edit-article-panel').style.display = 'none';
@@ -122,12 +173,22 @@
     }, true);
   }
 
-  // Database first, storage cleanup second. This preserves referenced media on DB failure.
+  // Database first, storage cleanup second. Inline media are removed only if no article still references them.
   window.deleteArticle = async function safeDeleteArticle(id, coverPath) {
     if (!confirm('Supprimer cet article définitivement ?')) return;
+
+    const { data: article, error: readError } = await dbClient
+      .from('articles')
+      .select('cover_path, content')
+      .eq('id', id)
+      .single();
+    if (readError || !article) return showNotif('Erreur : article introuvable.', 'error');
+
+    const cleanupCandidates = [coverPath || article.cover_path, ...inlinePathsFromHtml(article.content || '')];
     const { error } = await dbClient.from('articles').delete().eq('id', id);
     if (error) return showNotif('Erreur : ' + error.message, 'error');
-    if (coverPath) await removePaths([coverPath]);
+
+    await removeUnreferencedPaths(cleanupCandidates);
     showNotif('Article supprimé');
     await loadArticles();
   };
