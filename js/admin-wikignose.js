@@ -55,7 +55,7 @@
         </div>
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:1rem"><button id="wg-upload" class="btn-primary" type="button" style="max-width:240px">Envoyer à indexer</button><span id="wg-status" class="empty-msg" role="status" aria-live="polite"></span></div>
       </div>
-      <div class="admin-section"><h3>Ouvrages en attente</h3><div id="wg-queue" class="empty-msg">Chargement…</div></div>`;
+      <div class="admin-section"><h3>Registre d’ingestion</h3><div id="wg-queue" class="empty-msg">Chargement…</div></div>`;
     wrap.appendChild(panel);
 
     button.addEventListener('click', async () => {
@@ -80,11 +80,15 @@
       return;
     }
     if (!data.length) {
-      list.innerHTML = '<p class="empty-msg">Aucun ouvrage en attente.</p>';
+      list.innerHTML = '<p class="empty-msg">Aucun ouvrage enregistré.</p>';
       return;
     }
 
-    list.innerHTML = data.map((item) => `<div class="admin-row" data-wg-id="${esc(item.id)}"><div><strong class="row-name">${esc(item.title_hint || item.original_filename)}</strong><div class="row-meta">${esc(item.original_filename)} · ${((item.file_size || 0) / 1024 / 1024).toFixed(2)} Mo${item.school_hint ? ' · ' + esc(item.school_hint) : ''}${item.course_hint ? ' · ' + esc(item.course_hint) : ''}</div></div><span class="row-meta">${esc(statusLabel(item.status))} · ${new Date(item.uploaded_at).toLocaleString('fr-FR')}</span><div class="row-actions"><button class="btn-sm btn-del" type="button" data-wg-delete>Retirer</button></div></div>`).join('');
+    list.innerHTML = data.map((item) => {
+      const canRemove = ['pending', 'error'].includes(item.status);
+      const action = canRemove ? '<button class="btn-sm btn-del" type="button" data-wg-delete>Retirer</button>' : '<span class="row-meta">Conservé</span>';
+      return `<div class="admin-row" data-wg-id="${esc(item.id)}"><div><strong class="row-name">${esc(item.title_hint || item.original_filename)}</strong><div class="row-meta">${esc(item.original_filename)} · ${((item.file_size || 0) / 1024 / 1024).toFixed(2)} Mo${item.school_hint ? ' · ' + esc(item.school_hint) : ''}${item.course_hint ? ' · ' + esc(item.course_hint) : ''}</div></div><span class="row-meta">${esc(statusLabel(item.status))} · ${new Date(item.uploaded_at).toLocaleString('fr-FR')}</span><div class="row-actions">${action}</div></div>`;
+    }).join('');
 
     data.forEach((item) => {
       const row = [...list.querySelectorAll('[data-wg-id]')].find((el) => el.dataset.wgId === String(item.id));
@@ -93,9 +97,13 @@
   }
 
   async function deleteQueuedDocument(item) {
-    if (!confirm(`Retirer « ${item.title_hint || item.original_filename} » de la file Wikignose ?`)) return;
+    if (!['pending', 'error'].includes(item.status)) {
+      document.getElementById('wg-status').textContent = 'Ce document est conservé dans le registre et ne peut pas être retiré avec cette action.';
+      return;
+    }
+    if (!confirm(`Retirer « ${item.title_hint || item.original_filename} » du registre Wikignose ?`)) return;
     const status = document.getElementById('wg-status');
-    status.textContent = 'Suppression de la file…';
+    status.textContent = 'Suppression du registre…';
 
     const { error: dbError } = await dbClient.from('wikignose_pending_documents').delete().eq('id', item.id);
     if (dbError) {
@@ -156,7 +164,7 @@
         const meta = await dbClient.from('wikignose_pending_documents').insert({ storage_path: path, original_filename: file.name, file_size: file.size, sha256, ...hints });
         if (meta.error) {
           await dbClient.storage.from(BUCKET).remove([path]);
-          status.textContent = `Fichier non enregistré dans la file : ${meta.error.message}`;
+          status.textContent = `Fichier non enregistré dans le registre : ${meta.error.message}`;
           continue;
         }
         done += 1;
