@@ -30,14 +30,27 @@ async function requireAuth() {
   return session;
 }
 
-// Enhancement layer for the administration page only.
-if (location.pathname.endsWith('/admin.html') || location.pathname.endsWith('admin.html')) {
+const isAdminPage = location.pathname.endsWith('/admin.html') || location.pathname.endsWith('admin.html');
+
+if (isAdminPage) {
+  document.documentElement.classList.add('admin-auth-pending');
+  const gateStyle = document.createElement('style');
+  gateStyle.textContent = '.admin-auth-pending body{visibility:hidden}';
+  document.head.appendChild(gateStyle);
+
+  // Promise partagée par les extensions du back-office.
+  window.adminSessionPromise = requireAuth();
+
   const css = document.createElement('link');
   css.rel = 'stylesheet';
   css.href = 'css/admin-2026.css';
   document.head.appendChild(css);
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    const session = await window.adminSessionPromise;
+    if (!session) return;
+
+    document.documentElement.classList.remove('admin-auth-pending');
     const wrap = document.querySelector('.admin-wrap');
     if (wrap && !document.querySelector('.admin-intro')) {
       const intro = document.createElement('section');
@@ -46,7 +59,7 @@ if (location.pathname.endsWith('/admin.html') || location.pathname.endsWith('adm
         <div>
           <div class="eyebrow">Studio de publication</div>
           <h1>Gérer La Forêt Enchantée</h1>
-          <p>Histoires, journal, catégories et recherche documentaire sont réunis dans le même back-office.</p>
+          <p>Histoires, journal et catégories sont réunis ici. L’outil documentaire Wikignose partage ce back-office sans faire partie de l’expérience jeunesse publique.</p>
         </div>
         <div class="admin-search">
           <input id="admin-global-search" type="search" placeholder="Filtrer les éléments affichés…" aria-label="Filtrer les contenus de l’administration">
@@ -55,16 +68,10 @@ if (location.pathname.endsWith('/admin.html') || location.pathname.endsWith('adm
       wrap.prepend(intro);
     }
 
-    const ux = document.createElement('script');
-    ux.src = 'js/admin-ux.js';
-    document.body.appendChild(ux);
-
-    const blogSafety = document.createElement('script');
-    blogSafety.src = 'js/admin-blog-safety.js';
-    document.body.appendChild(blogSafety);
-
-    const wikignose = document.createElement('script');
-    wikignose.src = 'js/admin-wikignose.js';
-    document.body.appendChild(wikignose);
+    for (const src of ['js/admin-ux.js', 'js/admin-blog-safety.js', 'js/admin-wikignose.js']) {
+      const script = document.createElement('script');
+      script.src = src;
+      document.body.appendChild(script);
+    }
   });
 }
