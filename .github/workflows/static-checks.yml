@@ -36,6 +36,7 @@ jobs:
           test -f article.html
           test -f wikignose.html
           test -f css/blog-2026.css
+          test -f js/app-accessibility.js
           test -f js/wikignose.js
           test -f js/admin-wikignose.js
           test -f js/admin-blog-safety.js
@@ -52,12 +53,21 @@ jobs:
           set -euo pipefail
           grep -q 'id="main-content"' index.html
           grep -q 'id="mini-player"' index.html
+          grep -q 'js/app-accessibility.js' index.html
           grep -q 'id="blog-grid"' blog.html
           grep -q 'id="blog-filters"' blog.html
           grep -q 'id="article-content"' article.html
           grep -q 'id="article-bc-title"' article.html
           grep -q 'js/blog.js' blog.html
           grep -q 'js/blog.js' article.html
+      - name: Check admin auth orchestration
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'adminSessionPromise' js/auth.js
+          grep -q 'admin-auth-pending' js/auth.js
+          grep -q "js/admin-wikignose.js" js/auth.js
+          grep -q "js/admin-blog-safety.js" js/auth.js
       - name: Check Supabase project consistency
         shell: bash
         run: |
