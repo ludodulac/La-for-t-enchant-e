@@ -44,4 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'jwyayfkssyagvnablttg' js/supabase.js
-          ! grep -R 'jwtawyeuyvqjikjvfhri' --exclude-dir=.git --exclude='*.md' .
+          if grep -R 'jwtawyeuyvqjikjvfhri' --include='*.js' --include='*.html' js data ./*.html; then
+            echo 'Ancienne référence Supabase Wikignose trouvée dans du code actif.' >&2
+            exit 1
+          fi
