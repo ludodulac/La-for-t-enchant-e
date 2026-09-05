@@ -54,6 +54,3 @@ drop policy if exists blog_images_write on storage.objects;
 drop policy if exists blog_images_delete on storage.objects;
 create policy blog_images_insert_admin on storage.objects for insert to authenticated with check (bucket_id='blog-images' and public.is_app_admin());
 create policy blog_images_delete_admin on storage.objects for delete to authenticated using (bucket_id='blog-images' and public.is_app_admin());
-
-create index if not exists wikignose_pending_documents_uploaded_by_idx
-  on public.wikignose_pending_documents(uploaded_by);
