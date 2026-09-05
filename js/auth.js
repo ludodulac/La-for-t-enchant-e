@@ -16,8 +16,7 @@ async function getSession() {
 async function requireAuth() {
   const session = await getSession();
   if (!session) {
-    const target = location.pathname.split('/').pop() === 'wikignose-admin.html' ? 'wikignose-admin.html' : 'admin.html';
-    window.location.href = `login.html?next=${encodeURIComponent(target)}`;
+    window.location.href = 'login.html?next=admin.html';
     return null;
   }
 
@@ -25,8 +24,7 @@ async function requireAuth() {
   if (error || isAdmin !== true) {
     console.warn('Accès administration refusé', error || 'Compte non autorisé');
     await dbClient.auth.signOut();
-    const target = location.pathname.split('/').pop() === 'wikignose-admin.html' ? 'wikignose-admin.html' : 'admin.html';
-    window.location.href = `login.html?unauthorized=1&next=${encodeURIComponent(target)}`;
+    window.location.href = 'login.html?unauthorized=1&next=admin.html';
     return null;
   }
   return session;
@@ -69,7 +67,7 @@ if (isAdminPage) {
         <div>
           <div class="eyebrow">Studio de publication</div>
           <h1>Gérer La Forêt Enchantée</h1>
-          <p>Histoires, journal et catégories sont réunis ici. Wikignose dispose désormais aussi de sa propre interface d’administration dédiée.</p>
+          <p>Histoires, journal et catégories sont réunis ici.</p>
         </div>
         <div class="admin-search">
           <input id="admin-global-search" type="search" placeholder="Filtrer les éléments affichés…" aria-label="Filtrer les contenus de l’administration">
@@ -80,10 +78,7 @@ if (isAdminPage) {
 
     try {
       await loadAdminScript('js/admin-blog-safety.js');
-      await Promise.all([
-        loadAdminScript('js/admin-ux.js'),
-        loadAdminScript('js/admin-wikignose.js')
-      ]);
+      await loadAdminScript('js/admin-ux.js');
       document.documentElement.classList.remove('admin-auth-pending');
     } catch (error) {
       console.error('Initialisation du back-office incomplète', error);

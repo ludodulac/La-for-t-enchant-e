@@ -24,7 +24,7 @@ jobs:
             [ -f "$file" ] || continue
             node --check "$file"
           done
-      - name: Check required integrated surfaces
+      - name: Check required surfaces
         shell: bash
         run: |
           set -euo pipefail
@@ -34,18 +34,11 @@ jobs:
           test -f login.html
           test -f blog.html
           test -f article.html
-          test -f wikignose.html
           test -f css/blog-2026.css
           test -f js/app-accessibility.js
-          test -f js/wikignose.js
-          test -f js/admin-wikignose.js
           test -f js/admin-blog-safety.js
-          test -f data/wikignose-index.js
-          test -f docs/WIKIGNOSE.md
-          test -f supabase/migrations/20260904_wikignose_module.sql
           test -f supabase/migrations/20260904_unify_admin_permissions.sql
           test -f supabase/migrations/20260904_add_fk_indexes.sql
-          test -f supabase/migrations/20260904_wikignose_pdf_sha256.sql
           test -f supabase/migrations/20260904_optimize_article_select_policies.sql
       - name: Check public page contracts
         shell: bash
@@ -66,34 +59,9 @@ jobs:
           set -euo pipefail
           grep -q 'adminSessionPromise' js/auth.js
           grep -q 'admin-auth-pending' js/auth.js
-          grep -q "js/admin-wikignose.js" js/auth.js
           grep -q "js/admin-blog-safety.js" js/auth.js
       - name: Check Supabase project consistency
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'jwyayfkssyagvnablttg' js/supabase.js
-          if grep -R 'jwtawyeuyvqjikjvfhri' --include='*.js' --include='*.html' js data ./*.html; then
-            echo 'Ancienne référence Supabase Wikignose trouvée dans du code actif.' >&2
-            exit 1
-          fi
-      - name: Check Wikignose contracts
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -q 'name="robots" content="noindex, nofollow"' wikignose.html
-          grep -q 'Outils · Wikignose' index.html
-          grep -q 'sha256File' js/admin-wikignose.js
-          grep -q 'Registre d’ingestion' js/admin-wikignose.js
-          grep -q "\['pending', 'error'\].includes(item.status)" js/admin-wikignose.js
-          grep -q 'lexicalEntries' js/wikignose.js
-          grep -q "section.text || '', ...(section.occurrenceTerms || \[\])" js/wikignose.js
-          grep -q '0 section avec index lexical' docs/WIKIGNOSE.md
-          if grep -q 'aria-label="Ouvrir Wikignose"' index.html; then
-            echo 'Wikignose ne doit pas redevenir une action principale de la médiathèque.' >&2
-            exit 1
-          fi
-          if grep -q 'const fallback = searchableText' js/wikignose.js; then
-            echo 'Le mode Occurrences ne doit jamais retomber sur les métadonnées thématiques.' >&2
-            exit 1
-          fi
