@@ -40,6 +40,7 @@ jobs:
           test -f supabase/migrations/20260904_unify_admin_permissions.sql
           test -f supabase/migrations/20260904_add_fk_indexes.sql
           test -f supabase/migrations/20260904_optimize_article_select_policies.sql
+          test -f QUALITY-MATURITY.md
       - name: Check public page contracts
         shell: bash
         run: |
@@ -53,6 +54,91 @@ jobs:
           grep -q 'id="article-bc-title"' article.html
           grep -q 'js/blog.js' blog.html
           grep -q 'js/blog.js' article.html
+      - name: Check safe mutation contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+
+          function assert(condition, message) {
+            if (!condition) throw new Error(message);
+          }
+
+          function ordered(source, markers, label) {
+            let cursor = -1;
+            for (const marker of markers) {
+              const next = source.indexOf(marker, cursor + 1);
+              assert(next !== -1, `${label}: marqueur manquant: ${marker}`);
+              assert(next > cursor, `${label}: ordre invalide autour de: ${marker}`);
+              cursor = next;
+            }
+          }
+
+          const admin = fs.readFileSync('js/admin.js', 'utf8');
+          ordered(admin, [
+            'async function handleAddAudio',
+            "await uploadFile('audios'",
+            "dbClient.from('audios').insert",
+            'uploaded.length = 0'
+          ], 'ajout audio');
+          assert(admin.includes('if (uploaded.length) await removeFiles(uploaded);'), 'ajout audio: rollback Storage absent');
+
+          ordered(admin, [
+            'async function handleEditAudio',
+            "dbClient.from('audios').update",
+            'if (oldFiles.length)',
+            'await removeFiles(oldFiles)'
+          ], 'édition audio');
+          assert(admin.indexOf('if (uploaded.length) await removeFiles(uploaded);', admin.indexOf('async function handleEditAudio')) !== -1,
+            'édition audio: rollback des nouveaux fichiers absent');
+
+          ordered(admin, [
+            'async function deleteAudio',
+            "dbClient.from('audios').delete",
+            'await removeFiles(files)'
+          ], 'suppression audio');
+
+          const blogSafety = fs.readFileSync('js/admin-blog-safety.js', 'utf8');
+          ordered(blogSafety, [
+            'function bindSafeAdd',
+            'uploadedCover = await uploadCover',
+            "dbClient.from('articles').insert",
+            'uploadedCover = null'
+          ], 'ajout article');
+          assert(blogSafety.includes('if (uploadedCover) await removePaths([uploadedCover]);'), 'ajout article: rollback couverture absent');
+
+          ordered(blogSafety, [
+            'function bindSafeEdit',
+            'newCover = await uploadCover',
+            "dbClient.from('articles').update",
+            'await removeUnreferencedPaths(cleanupCandidates)'
+          ], 'édition article');
+          assert(blogSafety.includes('if (newCover) await removePaths([newCover]);'), 'édition article: rollback nouvelle couverture absent');
+
+          ordered(blogSafety, [
+            'window.deleteArticle = async function safeDeleteArticle',
+            "dbClient.from('articles').delete",
+            'await removeUnreferencedPaths(cleanupCandidates)'
+          ], 'suppression article');
+          NODE
+      - name: Check sanitization boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'function sanitizeArticleHtml' js/blog.js
+          grep -q 'script,object,embed,form,input,button,textarea,select,link,meta,style' js/blog.js
+          grep -q "name.startsWith('on')" js/blog.js
+          grep -q "name === 'srcdoc'" js/blog.js
+          grep -q "youtube-nocookie.com" js/blog.js
+          grep -q 'sanitizeArticleHtml(article.content)' js/blog.js
+      - name: Check responsive contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '@media' css/app-2026.css
+          grep -q '@media' css/blog-2026.css
+          grep -q '@media' css/admin-2026.css
       - name: Check admin auth orchestration
         shell: bash
         run: |
