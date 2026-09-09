@@ -116,7 +116,6 @@ function buildPlayer(src, durationHint, id) {
   });
   audio.addEventListener('pause', () => {
     persist(true);
-    shell.classList.remove('is-listening');
     sync();
   });
   audio.addEventListener('ended', () => {
