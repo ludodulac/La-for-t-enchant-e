@@ -169,6 +169,13 @@ async function deleteSub(id) {
   renderAll();
 }
 
+function formatAdminDuration(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value < 0) return 'Durée inconnue';
+  const whole = Math.floor(value);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
+
 function renderAudioList() {
   const list = document.getElementById('audio-list-admin');
   if (!list) return;
@@ -179,9 +186,10 @@ function renderAudioList() {
   list.innerHTML = audios.map(audio => {
     const cat = categories.find(c => sameId(c.id, audio.category_id));
     const sub = subcategories.find(s => sameId(s.id, audio.subcategory_id));
+    const cover = audio.image_path ? getPublicUrl('images', audio.image_path) : '';
     return `<div class="admin-row">
-      <span class="row-name">${escapeHtml(audio.title)}</span>
-      <span class="row-meta">${escapeHtml(cat?.name ?? '—')}${sub ? ' › ' + escapeHtml(sub.name) : ''}</span>
+      <div class="admin-audio-identity">${cover ? `<img class="admin-audio-thumb" src="${escapeHtml(cover)}" alt="">` : '<div class="admin-audio-thumb placeholder" aria-hidden="true">⌁</div>'}<span class="admin-audio-title">${escapeHtml(audio.title)}</span></div>
+      <span class="row-meta">${escapeHtml(cat?.name ?? '—')}${sub ? ' › ' + escapeHtml(sub.name) : ''} · <span class="admin-audio-duration">${formatAdminDuration(audio.duration)}</span></span>
       <div class="row-actions">
         <button class="btn-sm btn-edit" type="button" data-edit-audio="${escapeHtml(audio.id)}">Modifier</button>
         <button class="btn-sm btn-del" type="button" data-delete-audio="${escapeHtml(audio.id)}">Supprimer</button>
@@ -342,6 +350,24 @@ function openEditAudio(id) {
   document.getElementById('edit-audio-cat').value = audio.category_id ?? '';
   updateSubSelect('edit-audio-sub', audio.category_id);
   document.getElementById('edit-audio-sub').value = audio.subcategory_id ?? '';
+
+  const cat = categories.find(c => sameId(c.id, audio.category_id));
+  const sub = subcategories.find(item => sameId(item.id, audio.subcategory_id));
+  const coverUrl = audio.image_path ? getPublicUrl('images', audio.image_path) : '';
+  const audioUrl = audio.audio_path ? getPublicUrl('audios', audio.audio_path) : '';
+  const currentCover = document.getElementById('edit-current-cover');
+  if (currentCover) currentCover.innerHTML = coverUrl
+    ? `<img src="${escapeHtml(coverUrl)}" alt="Couverture actuelle de ${escapeHtml(audio.title)}">`
+    : '<div class="placeholder" aria-hidden="true">⌁</div>';
+  const currentTitle = document.getElementById('edit-current-title');
+  if (currentTitle) currentTitle.textContent = audio.title;
+  const currentMeta = document.getElementById('edit-current-meta');
+  if (currentMeta) currentMeta.textContent = [cat?.name, sub?.name, formatAdminDuration(audio.duration)].filter(Boolean).join(' · ');
+  const currentAudio = document.getElementById('edit-current-audio');
+  if (currentAudio) {
+    currentAudio.src = audioUrl;
+    currentAudio.hidden = !audioUrl;
+  }
   document.getElementById('edit-panel').scrollIntoView({ behavior: 'smooth' });
 }
 
