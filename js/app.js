@@ -208,7 +208,7 @@ function updateNavigation() {
 
 function updateHeader() {
   const titles = {
-    library: ['Médiathèque personnelle', 'Votre forêt sonore', 'Choisissez une histoire, lancez-la immédiatement et continuez à explorer sans interrompre l’écoute.'],
+    library: ['Médiathèque personnelle', 'Votre forêt sonore', 'Choisissez une histoire et lancez-la.'],
     recent: ['À reprendre', 'Écoutés récemment', 'Retrouvez les dernières histoires lancées sur cet appareil et reprenez votre écoute.'],
     categories: ['Explorer', 'Toutes les catégories', 'Parcourez la collection par univers sonore.'],
     all: ['Bibliothèque', 'Tous les audios', 'Une vue exhaustive, idéale pour retrouver rapidement un contenu précis.']
