@@ -66,9 +66,13 @@ function renderAudio(item) {
 
 function buildPlayer(src, durationHint, id) {
   const zone = document.getElementById('player-zone');
+  const saved = storedProgress(id);
+  const resumeAt = Number(saved?.time || 0);
+  const hasResumePoint = resumeAt > 3;
   zone.innerHTML = `<div class="full-player">
     <audio id="audio-element" preload="metadata"></audio>
     <div class="full-progress"><span id="time-current">0:00</span><input class="range" id="progress-bar" type="range" min="0" max="100" step="0.1" value="0" aria-label="Progression"><span id="time-total">${formatDuration(durationHint)}</span></div>
+    ${hasResumePoint ? `<div class="resume-note" id="resume-note">Reprise à ${formatDuration(resumeAt)}</div>` : ''}
     <div class="full-transport"><button id="rewind" type="button" aria-label="Reculer de 15 secondes">−15</button><button class="play" id="play" type="button" aria-label="Lecture">▶</button><button id="forward" type="button" aria-label="Avancer de 15 secondes">+15</button></div>
     <div class="full-tools"><label>Vitesse <select class="speed-select" id="speed" aria-label="Vitesse de lecture"><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label><label>Volume <input class="range" id="volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume"></label></div>
   </div>`;
@@ -78,6 +82,8 @@ function buildPlayer(src, durationHint, id) {
   const progress = document.getElementById('progress-bar');
   const current = document.getElementById('time-current');
   const total = document.getElementById('time-total');
+  const shell = document.getElementById('player-container');
+  const resumeNote = document.getElementById('resume-note');
   let lastSavedSecond = -1;
   audio.src = src;
 
@@ -98,14 +104,26 @@ function buildPlayer(src, durationHint, id) {
   };
 
   audio.addEventListener('loadedmetadata', () => {
-    const saved = storedProgress(id);
-    if (saved?.time > 3 && saved.time < audio.duration - 3) audio.currentTime = saved.time;
+    if (hasResumePoint && resumeAt < audio.duration - 3) audio.currentTime = resumeAt;
     sync();
   });
   audio.addEventListener('timeupdate', () => { sync(); persist(false); });
-  audio.addEventListener('play', () => { recordRecentAudio(id); sync(); });
-  audio.addEventListener('pause', () => { persist(true); sync(); });
-  audio.addEventListener('ended', () => { saveProgress(id, audio.currentTime || 0, audio.duration || 0, true); sync(); });
+  audio.addEventListener('play', () => {
+    recordRecentAudio(id);
+    shell.classList.add('is-listening');
+    if (resumeNote) resumeNote.hidden = true;
+    sync();
+  });
+  audio.addEventListener('pause', () => {
+    persist(true);
+    shell.classList.remove('is-listening');
+    sync();
+  });
+  audio.addEventListener('ended', () => {
+    saveProgress(id, audio.currentTime || 0, audio.duration || 0, true);
+    shell.classList.remove('is-listening');
+    sync();
+  });
   window.addEventListener('pagehide', () => persist(true));
 
   play.addEventListener('click', () => {
