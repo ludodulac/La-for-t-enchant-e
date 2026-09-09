@@ -88,14 +88,23 @@
       <div id="edit-panel">
         <h4>✏️ Modifier</h4>
         <input type="hidden" id="edit-audio-id">
+        <div class="edit-current" id="edit-current-media" aria-live="polite">
+          <div class="edit-current-cover" id="edit-current-cover"><div class="placeholder">⌁</div></div>
+          <div class="edit-current-copy">
+            <div class="edit-current-label">Histoire actuelle</div>
+            <div class="edit-current-title" id="edit-current-title">—</div>
+            <div class="edit-current-meta" id="edit-current-meta">—</div>
+            <audio id="edit-current-audio" controls preload="metadata"></audio>
+          </div>
+        </div>
         <form id="form-edit-audio" novalidate>
           <div class="edit-grid">
             <div class="form-group"><label for="edit-audio-title">Titre *</label><input type="text" id="edit-audio-title" required></div>
             <div class="form-group"><label for="edit-audio-cat">Catégorie</label><select id="edit-audio-cat"></select></div>
             <div class="form-group"><label for="edit-audio-sub">Sous-catégorie</label><select id="edit-audio-sub"></select></div>
-            <div class="form-group"><label for="edit-audio-img">Nouvelle image</label><input type="file" id="edit-audio-img" accept="image/*"></div>
+            <div class="form-group"><label for="edit-audio-img">Nouvelle image de couverture</label><input type="file" id="edit-audio-img" accept="image/*"><div class="keep-file-hint"><strong>Laisser vide pour conserver la couverture actuelle.</strong></div></div>
             <div class="form-group" style="grid-column:1/-1"><label for="edit-audio-desc">Description</label><textarea id="edit-audio-desc"></textarea></div>
-            <div class="form-group" style="grid-column:1/-1"><label for="edit-audio-file">Nouveau fichier audio</label><input type="file" id="edit-audio-file" accept="audio/*"></div>
+            <div class="form-group" style="grid-column:1/-1"><label for="edit-audio-file">Nouveau fichier audio</label><input type="file" id="edit-audio-file" accept="audio/*"><div class="keep-file-hint"><strong>Laisser vide pour conserver l’audio actuel.</strong></div></div>
           </div>
           <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
             <button type="submit" class="btn-primary" style="max-width:180px">Enregistrer</button>
