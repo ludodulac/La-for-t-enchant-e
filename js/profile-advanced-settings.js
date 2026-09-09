@@ -5,21 +5,22 @@
   const DEFAULT_DAYS = [0,1,2,3,4,5,6];
   let currentProfileId = null;
 
-  function readJson(key, fallback) {
-    try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+  if (!document.querySelector('link[href="css/advanced-parent-polish.css"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'css/advanced-parent-polish.css';
+    document.head.appendChild(link);
   }
-  function writeJson(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-  }
+
+  function readJson(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
+  function writeJson(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }
   function profiles() { return readJson(PROFILES_KEY, []); }
   function activeProfile() {
     const active = readJson(PROFILE_KEY, null);
     return profiles().find(item => active && String(item.id) === String(active.id)) || active || profiles()[0] || null;
   }
   function byId(id) { return profiles().find(item => String(item.id) === String(id)); }
-  function selectedDays() {
-    return [...document.querySelectorAll('#setting-night-days [data-day].active')].map(button => Number(button.dataset.day));
-  }
+  function selectedDays() { return [...document.querySelectorAll('#setting-night-days [data-day].active')].map(button => Number(button.dataset.day)); }
   function setSelectedDays(days) {
     const selected = Array.isArray(days) && days.length ? days.map(Number) : DEFAULT_DAYS;
     document.querySelectorAll('#setting-night-days [data-day]').forEach(button => button.classList.toggle('active', selected.includes(Number(button.dataset.day))));
@@ -52,6 +53,10 @@
     setSelectedDays(profile.nightDays);
     renderBlocked(profile);
   }
+  function populateSelectedProfile() {
+    const selected = document.querySelector('.parent-profile-chip.active[data-edit-profile]');
+    populate(selected ? byId(selected.dataset.editProfile) : activeProfile() || profiles()[0]);
+  }
   function saveAdvanced() {
     const list = profiles();
     const id = currentProfileId || activeProfile()?.id;
@@ -60,13 +65,14 @@
     const blocked = [...document.querySelectorAll('#blocked-title-list input[type="checkbox"]:checked')].map(input => String(input.value));
     const birthValue = Number(document.getElementById('setting-birth-year')?.value || 0);
     const ageValue = document.getElementById('setting-age-level')?.value || 'auto';
+    const days = selectedDays();
     const next = {
       ...list[index],
       birthYear: birthValue || null,
       ageLevel: ageValue === 'auto' ? 'auto' : Number(ageValue),
       nightStart: document.getElementById('setting-night-start')?.value || '20:00',
       nightEnd: document.getElementById('setting-night-end')?.value || '07:00',
-      nightDays: selectedDays().length ? selectedDays() : DEFAULT_DAYS,
+      nightDays: days.length ? days : DEFAULT_DAYS,
       blockedAudioIds: blocked
     };
     list[index] = next;
@@ -87,8 +93,12 @@
 
   const parentSpace = document.getElementById('parent-space');
   if (parentSpace) new MutationObserver(() => {
-    if (!parentSpace.hidden) requestAnimationFrame(() => populate(activeProfile() || profiles()[0]));
+    if (!parentSpace.hidden) requestAnimationFrame(populateSelectedProfile);
   }).observe(parentSpace, { attributes: true, attributeFilter: ['hidden'] });
+  const profileList = document.getElementById('parent-profile-list');
+  if (profileList) new MutationObserver(() => {
+    if (!parentSpace?.hidden) requestAnimationFrame(populateSelectedProfile);
+  }).observe(profileList, { childList: true });
 
   let attempts = 0;
   const wait = setInterval(() => {
