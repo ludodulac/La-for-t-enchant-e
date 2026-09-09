@@ -35,7 +35,12 @@ jobs:
           test -f blog.html
           test -f article.html
           test -f css/blog-2026.css
+          test -f css/visual-polish.css
+          test -f css/advanced-parent-polish.css
           test -f js/app-accessibility.js
+          test -f js/child-shell.js
+          test -f js/child-controls.js
+          test -f js/profile-advanced-settings.js
           test -f js/admin-blog-safety.js
           test -f supabase/migrations/20260904_unify_admin_permissions.sql
           test -f supabase/migrations/20260904_add_fk_indexes.sql
@@ -53,6 +58,27 @@ jobs:
           grep -q 'id="article-bc-title"' article.html
           grep -q 'js/blog.js' blog.html
           grep -q 'js/blog.js' article.html
+      - name: Check child experience contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'id="profile-gate"' index.html
+          grep -q 'id="parent-space"' index.html
+          grep -q 'id="setting-birth-year"' index.html
+          grep -q 'id="setting-age-level"' index.html
+          grep -q 'id="setting-night-start"' index.html
+          grep -q 'id="setting-night-end"' index.html
+          grep -q 'id="setting-night-days"' index.html
+          grep -q 'id="blocked-title-list"' index.html
+          grep -q 'js/profile-advanced-settings.js' index.html
+          grep -q 'js/child-controls.js' index.html
+          grep -q 'js/child-controls.js' audio.html
+          grep -q 'renderChildCategories' js/child-shell.js
+          grep -q 'renderChildSearch' js/child-shell.js
+          grep -q 'blockedAudioIds' js/child-controls.js
+          grep -q 'nightModeActive' js/child-controls.js
+          grep -q 'profileAgeLimit' js/child-controls.js
+          grep -q 'child-symbolic-hero' css/advanced-parent-polish.css
       - name: Check admin auth orchestration
         shell: bash
         run: |
