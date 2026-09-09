@@ -36,7 +36,7 @@ jobs:
           shopt -s dotglob
           for item in *; do
             case "$item" in
-              _site|.git|.github|supabase|docs|README.md|LICENSE) continue ;;
+              _site|.git|.github|supabase|docs|README.md|AI_START_HERE.md|LICENSE) continue ;;
             esac
             cp -R "$item" _site/
           done
