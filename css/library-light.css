@@ -1,0 +1,116 @@
+/* Accueil de la médiathèque : lumière chaude, structure forêt, histoires au premier plan. */
+body.media-app{
+  background:
+    radial-gradient(circle at 88% 0%,rgba(242,198,109,.16),transparent 30%),
+    radial-gradient(circle at 8% 34%,rgba(139,201,160,.12),transparent 28%),
+    linear-gradient(180deg,var(--forest-paper-soft) 0%,var(--forest-paper) 100%);
+  color:var(--forest-ink);
+}
+body.media-app .main-surface{color:var(--forest-ink)}
+body.media-app .topbar{
+  background:linear-gradient(180deg,rgba(255,250,240,.97) 68%,rgba(255,250,240,0));
+}
+body.media-app .search-field input{
+  border-color:var(--forest-line-light);
+  background:rgba(255,255,255,.68);
+  color:var(--forest-ink);
+  box-shadow:0 8px 26px rgba(44,61,49,.05);
+}
+body.media-app .search-field input::placeholder{color:var(--forest-muted-ink)}
+body.media-app .search-field input:focus{
+  border-color:rgba(16,37,26,.46);
+  box-shadow:0 0 0 4px rgba(242,198,109,.24);
+  background:rgba(255,255,255,.9);
+}
+body.media-app .search-icon,
+body.media-app .clear-search{color:var(--forest-muted-ink)}
+body.media-app .icon-button,
+body.media-app .chip,
+body.media-app .view-button{
+  border-color:var(--forest-line-light);
+  background:rgba(255,255,255,.52);
+  color:var(--forest-muted-ink);
+}
+body.media-app .icon-button:hover,
+body.media-app .view-button:hover,
+body.media-app .chip:hover{
+  color:var(--forest-ink);
+  background:rgba(255,255,255,.84);
+}
+body.media-app .eyebrow{color:#6b7e70}
+body.media-app .page-subtitle,
+body.media-app .media-sub,
+body.media-app .row-sub,
+body.media-app .row-duration,
+body.media-app .collection-count,
+body.media-app .empty-state{color:var(--forest-muted-ink)}
+body.media-app .stat-pill{
+  border-color:var(--forest-line-light);
+  background:rgba(255,255,255,.48);
+  color:var(--forest-muted-ink);
+}
+body.media-app .chip.active{
+  background:var(--forest-deep);
+  border-color:var(--forest-deep);
+  color:var(--forest-cream);
+}
+body.media-app .view-switch{
+  border-color:var(--forest-line-light);
+  background:rgba(255,255,255,.36);
+}
+body.media-app .view-button.active{
+  background:rgba(16,37,26,.11);
+  color:var(--forest-deep);
+}
+body.media-app .cover-wrap{
+  border-color:rgba(16,37,26,.09);
+  box-shadow:var(--forest-shadow-light);
+}
+body.media-app .media-card:hover .cover-wrap{box-shadow:0 22px 48px rgba(39,54,42,.17)}
+body.media-app .cover-placeholder{
+  color:var(--forest-deep);
+  background:
+    radial-gradient(circle at 30% 20%,rgba(242,198,109,.28),transparent 42%),
+    radial-gradient(circle at 75% 75%,rgba(139,201,160,.24),transparent 48%),
+    var(--forest-paper-soft);
+}
+body.media-app .media-title,
+body.media-app .row-title,
+body.media-app .collection-name{color:var(--forest-ink)}
+body.media-app .media-row:hover{
+  background:rgba(255,255,255,.55);
+  border-color:var(--forest-line-light);
+}
+body.media-app .row-play{
+  border-color:var(--forest-line-light);
+  background:rgba(255,255,255,.62);
+  color:var(--forest-deep);
+}
+body.media-app .collection-card{
+  border-color:var(--forest-line-light);
+  background:linear-gradient(145deg,rgba(255,255,255,.72),rgba(255,247,232,.52));
+}
+body.media-app .empty-state{border-color:rgba(16,37,26,.18)}
+body.media-app .empty-state strong{color:var(--forest-ink)}
+body.media-app .skeleton{
+  background:linear-gradient(90deg,rgba(16,37,26,.045),rgba(16,37,26,.09),rgba(16,37,26,.045));
+  background-size:200% 100%;
+}
+body.media-app .main-surface footer{border-top-color:var(--forest-line-light)!important;color:var(--forest-muted-ink)!important}
+
+@media(max-width:720px){
+  body.media-app .main-surface{padding-top:10px}
+  body.media-app .topbar{margin-bottom:4px;padding-bottom:8px}
+  body.media-app .search-field input{height:44px;border-radius:14px}
+  body.media-app .icon-button{width:42px;height:42px}
+  body.media-app .page-head{margin-bottom:8px}
+  body.media-app .eyebrow{font-size:.64rem;letter-spacing:.1em}
+  body.media-app .page-head h1{font-size:1.62rem;line-height:1.04;margin:3px 0 3px;letter-spacing:-.045em}
+  body.media-app .page-subtitle{font-size:.76rem;line-height:1.32;max-width:42ch}
+  body.media-app .toolbar{margin-bottom:10px}
+  body.media-app .chip{padding:7px 10px;font-size:.78rem}
+  body.media-app .view-switch{padding:3px}
+  body.media-app .view-button{width:32px;height:30px}
+}
+
+body.media-app .main-surface :focus-visible{outline-color:var(--forest-deep)}
