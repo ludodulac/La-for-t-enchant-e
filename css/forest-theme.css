@@ -1,0 +1,15 @@
+:root{
+  --forest-night:#0b1711;
+  --forest-deep:#10251a;
+  --forest-panel:#173225;
+  --forest-panel-soft:#1c3a2b;
+  --forest-cream:#fff7e8;
+  --forest-mist:#b9cdbf;
+  --forest-leaf:#8bc9a0;
+  --forest-sun:#f2c66d;
+  --forest-magic:#d9a0df;
+  --forest-water:#74c7c0;
+  --forest-clay:#e58c67;
+  --forest-line:rgba(255,247,232,.11);
+  --forest-shadow:0 24px 80px rgba(3,10,6,.34);
+}
