@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f6eedc">
+  <meta name="theme-color" content="#fbf4e9">
   <title>La Forêt Enchantée — Médiathèque</title>
   <meta name="description" content="Parcourir, retrouver et écouter les histoires de La Forêt Enchantée.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,18 +11,40 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;750&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app-2026.css">
   <link rel="stylesheet" href="css/library-light.css">
+  <link rel="stylesheet" href="css/child-shell.css">
 </head>
-<body class="media-app">
+<body class="media-app child-experience">
+  <section class="profile-gate" id="profile-gate" aria-labelledby="profile-gate-title" hidden>
+    <div class="profile-panel">
+      <div class="profile-mark" aria-hidden="true">⌁</div>
+      <h1 id="profile-gate-title">Bienvenue dans la Forêt</h1>
+      <p>Choisis l’espace que tu veux ouvrir. Les profils personnalisés arriveront dans l’étape dédiée.</p>
+      <div class="profile-choice-grid">
+        <button class="profile-choice child" id="choose-child-profile" type="button">
+          <span class="profile-choice-icon" aria-hidden="true">🌿</span>
+          <strong>Profil enfant</strong>
+          <span>Entrer dans les histoires</span>
+        </button>
+        <div class="profile-choice parent" aria-disabled="true">
+          <span class="profile-choice-icon" aria-hidden="true">🔒</span>
+          <strong>Espace parents</strong>
+          <span>Ajouté dans une prochaine étape</span>
+        </div>
+      </div>
+      <div class="profile-note">Aucun compte en ligne n’est utilisé pour le moment.</div>
+    </div>
+  </section>
+
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navigation principale">
       <a class="brand" href="index.html" aria-label="La Forêt Enchantée — accueil">
         <span class="brand-mark" aria-hidden="true">⌁</span><span>La Forêt Enchantée</span>
       </a>
       <nav class="nav-group">
-        <button class="nav-button active" data-view="library"><span class="nav-icon">◫</span><span class="nav-label">Bibliothèque</span></button>
-        <button class="nav-button" data-view="recent"><span class="nav-icon">◷</span><span class="nav-label">Récents</span></button>
+        <button class="nav-button active" data-view="library"><span class="nav-icon">⌂</span><span class="nav-label">Accueil</span></button>
+        <button class="nav-button" data-view="recent"><span class="nav-icon">◷</span><span class="nav-label">À reprendre</span></button>
         <button class="nav-button" data-view="categories"><span class="nav-icon">◇</span><span class="nav-label">Catégories</span></button>
-        <button class="nav-button" data-view="all"><span class="nav-icon">≡</span><span class="nav-label">Tous les audios</span></button>
+        <button class="nav-button" data-view="all"><span class="nav-icon">≡</span><span class="nav-label">Toutes les histoires</span></button>
       </nav>
       <div class="sidebar-footer">
         <a class="sidebar-link" href="blog.html">Journal</a>
@@ -31,10 +53,23 @@
     </aside>
 
     <main class="main-surface">
+      <header class="child-topbar" aria-label="Profil enfant">
+        <div class="child-greeting">
+          <div class="child-avatar" id="child-avatar" aria-hidden="true">🌿</div>
+          <div class="child-greeting-copy">
+            <div class="child-kicker">La Forêt Enchantée</div>
+            <div class="child-greeting-name" id="child-greeting-name">Bonjour</div>
+          </div>
+        </div>
+        <div class="child-actions">
+          <button class="child-round-button" id="switch-profile" type="button" aria-label="Changer de profil">☺</button>
+        </div>
+      </header>
+
       <div class="topbar">
         <div class="search-field">
           <span class="search-icon" aria-hidden="true">⌕</span>
-          <input id="search-input" type="search" placeholder="Rechercher un titre, une description…" autocomplete="off" aria-label="Rechercher dans la bibliothèque">
+          <input id="search-input" type="search" placeholder="Quelle histoire veux-tu écouter ?" autocomplete="off" aria-label="Rechercher dans la bibliothèque">
           <button id="clear-search" class="clear-search" type="button" aria-label="Effacer la recherche" hidden>×</button>
         </div>
         <div class="top-actions">
@@ -66,7 +101,7 @@
         </div>
       </section>
 
-      <footer style="margin-top:72px;padding-top:18px;border-top:1px solid rgba(255,255,255,.06);font-size:.74rem;color:#65736b;display:flex;gap:16px;flex-wrap:wrap">
+      <footer style="margin-top:72px;padding-top:18px;border-top:1px solid rgba(36,50,43,.08);font-size:.74rem;color:#65736b;display:flex;gap:16px;flex-wrap:wrap">
         <a href="login.html" style="color:inherit;text-decoration:none;opacity:.9">Administration</a>
       </footer>
     </main>
@@ -94,11 +129,19 @@
     </div>
   </div>
 
+  <nav class="child-bottom-nav" aria-label="Navigation enfant">
+    <button class="child-nav-button active" type="button" data-child-view="library"><span class="child-nav-icon">⌂</span><span>Accueil</span></button>
+    <button class="child-nav-button" type="button" data-child-view="categories"><span class="child-nav-icon">◇</span><span>Catégories</span></button>
+    <button class="child-nav-button" type="button" data-child-view="search"><span class="child-nav-icon">⌕</span><span>Rechercher</span></button>
+    <button class="child-nav-button" type="button" data-child-view="recent"><span class="child-nav-icon">◷</span><span>À reprendre</span></button>
+  </nav>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase.js"></script>
   <script src="js/app.js"></script>
   <script src="js/app-resilience.js"></script>
   <script src="js/app-accessibility.js"></script>
+  <script src="js/child-shell.js"></script>
 </body>
 </html>
-<!-- pages-redeploy: 2026-09-04 -->
+<!-- child-shell-phase-1: 2026-09-09 -->
