@@ -10,6 +10,12 @@
   --forest-magic:#d9a0df;
   --forest-water:#74c7c0;
   --forest-clay:#e58c67;
+  --forest-paper:#f6eedc;
+  --forest-paper-soft:#fffaf0;
+  --forest-ink:#173225;
+  --forest-muted-ink:#53695c;
+  --forest-line-light:rgba(23,50,37,.14);
+  --forest-shadow-light:0 18px 48px rgba(39,54,42,.12);
   --forest-line:rgba(255,247,232,.11);
   --forest-shadow:0 24px 80px rgba(3,10,6,.34);
 }
