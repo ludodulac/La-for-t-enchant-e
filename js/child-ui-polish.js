@@ -7,9 +7,22 @@
     actions.prepend(status);
   }
 
+  function ensureAdministrationFooter() {
+    const surface = document.querySelector('.main-surface');
+    if (!surface || surface.querySelector('.public-admin-footer')) return;
+    const footer = document.createElement('footer');
+    footer.className = 'public-admin-footer';
+    footer.innerHTML = '<a href="login.html">Administration</a>';
+    surface.appendChild(footer);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     placeStatusInHeader();
-    const observer = new MutationObserver(placeStatusInHeader);
+    ensureAdministrationFooter();
+    const observer = new MutationObserver(() => {
+      placeStatusInHeader();
+      ensureAdministrationFooter();
+    });
     observer.observe(document.body, { childList: true, subtree: true });
   });
 })();
