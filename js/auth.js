@@ -55,6 +55,11 @@ if (isAdminPage) {
   css.href = 'css/admin-2026.css';
   document.head.appendChild(css);
 
+  const coverCss = document.createElement('link');
+  coverCss.rel = 'stylesheet';
+  coverCss.href = 'css/admin-covers.css';
+  document.head.appendChild(coverCss);
+
   document.addEventListener('DOMContentLoaded', async () => {
     const session = await window.adminSessionPromise;
     if (!session) return;
@@ -77,6 +82,8 @@ if (isAdminPage) {
     }
 
     try {
+      await loadAdminScript('js/cover-composer.js');
+      await loadAdminScript('js/admin-cover-editor.js');
       await loadAdminScript('js/admin-blog-safety.js');
       await loadAdminScript('js/admin-ux.js');
       document.documentElement.classList.remove('admin-auth-pending');
