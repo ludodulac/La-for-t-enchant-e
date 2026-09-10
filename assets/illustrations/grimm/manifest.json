@@ -1,0 +1,10 @@
+[
+  {"id":"renard","label":"Renard","file":"renard.png","scale":1.02,"offsetY":0.00},
+  {"id":"grenouille","label":"Grenouille","file":"grenouille.png","scale":1.08,"offsetY":0.01},
+  {"id":"sorciere","label":"Sorcière","file":"sorciere.png","scale":0.96,"offsetY":0.00},
+  {"id":"miroir","label":"Miroir","file":"miroir.png","scale":1.18,"offsetY":0.00},
+  {"id":"arbre","label":"Arbre","file":"arbre.png","scale":1.04,"offsetY":0.01},
+  {"id":"oiseau","label":"Oiseau","file":"oiseau.png","scale":1.05,"offsetY":0.00},
+  {"id":"couronne","label":"Couronne","file":"couronne.png","scale":1.10,"offsetY":0.01},
+  {"id":"lune","label":"Lune","file":"lune.png","scale":1.15,"offsetY":0.00}
+]
