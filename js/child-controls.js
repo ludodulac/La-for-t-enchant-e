@@ -55,6 +55,9 @@
     if (age < 7) return 5;
     return 7;
   }
+  function hasConfiguredAge(p = profile()) {
+    return [3,5,7].includes(Number(p?.ageLevel)) || Boolean(Number(p?.birthYear || 0));
+  }
   function requiredAge(audio, category, subcategory) {
     const text = textOf(audio, category, subcategory);
     const seven = /(?:^|\D)7\s*(?:\+|ans?)/.test(text) || text.includes('à partir de 7') || text.includes('a partir de 7');
@@ -135,7 +138,7 @@
     const timer = timerState(p);
     const parts = [];
     if (night) parts.push('🌙 Histoires douces');
-    parts.push(`★ ${profileAgeLimit(p)}+`);
+    if (hasConfiguredAge(p)) parts.push(`★ ${profileAgeLimit(p)}+`);
     if (timer.enabled && timer.started && !timer.expired) parts.push(`⏱ ${formatRemaining(timer.remaining)}`);
     if (Date.now() < antiZapUntil) parts.push(`🔒 ${Math.ceil((antiZapUntil - Date.now()) / 1000)}s`);
     status.textContent = parts.join(' · ');
