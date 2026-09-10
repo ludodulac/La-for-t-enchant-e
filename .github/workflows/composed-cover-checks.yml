@@ -1,0 +1,63 @@
+name: Composed cover checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Check composed cover files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f js/cover-composer.js
+          test -f js/admin-cover-editor.js
+          test -f css/admin-covers.css
+          test -f assets/illustrations/grimm/manifest.json
+          test -f supabase/migrations/20260910_add_composed_cover_metadata.sql
+          for file in renard grenouille sorciere miroir arbre oiseau couronne lune; do
+            test -f "assets/illustrations/grimm/${file}.png"
+          done
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check js/cover-composer.js
+          node --check js/admin-cover-editor.js
+      - name: Check manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const fs=require("fs");const p="assets/illustrations/grimm/manifest.json";const x=JSON.parse(fs.readFileSync(p,"utf8"));if(!Array.isArray(x)||x.length<8)process.exit(1);for(const a of x){if(!a.id||!a.label||!a.file)process.exit(1);if(!fs.existsSync("assets/illustrations/grimm/"+a.file))process.exit(1)}'
+      - name: Check admin integration contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "js/cover-composer.js" js/auth.js
+          grep -q "js/admin-cover-editor.js" js/auth.js
+          grep -q "css/admin-covers.css" js/auth.js
+          grep -q "illustration_key" js/admin-cover-editor.js
+          grep -q "cover_color" js/admin-cover-editor.js
+          grep -q "uploadVerified" js/admin-cover-editor.js
+          grep -q "verifyRow" js/admin-cover-editor.js
+          grep -q "illustration_key" supabase/migrations/20260910_add_composed_cover_metadata.sql
+          grep -q "cover_color" supabase/migrations/20260910_add_composed_cover_metadata.sql
+      - name: Ensure no embedded base64 architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE 'data:[^;]+;base64|base64,' \
+            --include='*.html' --include='*.js' --include='*.json' --include='*.css' \
+            --exclude-dir=.git .; then
+            echo 'Embedded Base64 payload found in text assets.'
+            exit 1
+          fi
