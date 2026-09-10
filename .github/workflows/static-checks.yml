@@ -40,6 +40,7 @@ jobs:
           test -f js/app-accessibility.js
           test -f js/child-shell.js
           test -f js/child-controls.js
+          test -f js/child-ui-polish.js
           test -f js/profile-advanced-settings.js
           test -f js/admin-blog-safety.js
           test -f supabase/migrations/20260904_unify_admin_permissions.sql
@@ -72,12 +73,15 @@ jobs:
           grep -q 'id="blocked-title-list"' index.html
           grep -q 'js/profile-advanced-settings.js' index.html
           grep -q 'js/child-controls.js' index.html
+          grep -q 'js/child-ui-polish.js' index.html
           grep -q 'js/child-controls.js' audio.html
           grep -q 'renderChildCategories' js/child-shell.js
           grep -q 'renderChildSearch' js/child-shell.js
           grep -q 'blockedAudioIds' js/child-controls.js
           grep -q 'nightModeActive' js/child-controls.js
           grep -q 'profileAgeLimit' js/child-controls.js
+          grep -q 'placeStatusInHeader' js/child-ui-polish.js
+          grep -q 'window.scrollTo' js/app-resilience.js
           grep -q 'child-symbolic-hero' css/advanced-parent-polish.css
       - name: Check admin auth orchestration
         shell: bash
