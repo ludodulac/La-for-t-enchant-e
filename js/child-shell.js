@@ -23,6 +23,7 @@
   let parentExpected = null;
   let editedProfileId = null;
   let currentChildView = 'library';
+  let parentLockOrigin = 'gate';
 
   function readJson(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
   function writeJsonLocal(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }
@@ -185,8 +186,20 @@
     if (parentAnswer) { parentAnswer.value=''; setTimeout(()=>parentAnswer.focus(),50); }
     if (clearError && parentError) parentError.textContent='';
   }
-  function openParentLock() { if(gate)gate.hidden=true; newParentChallenge(); if(parentLock)parentLock.hidden=false; }
-  function closeParentLock() { if(parentLock)parentLock.hidden=true; openGate(); }
+  function openParentLock(origin='child') {
+    parentLockOrigin = origin;
+    if(gate) gate.hidden=true;
+    newParentChallenge();
+    if(parentLock) parentLock.hidden=false;
+  }
+  function closeParentLock() {
+    if(parentLock) parentLock.hidden=true;
+    if (parentLockOrigin === 'gate') openGate();
+    else {
+      if(gate) gate.hidden=true;
+      applyProfile(activeProfile());
+    }
+  }
   function openParentSpace() { if(parentLock)parentLock.hidden=true; if(parentSpace)parentSpace.hidden=false; renderParentProfiles(); const first=profiles()[0]; if(first)selectParentProfile(first.id); }
   function closeParentSpace() { if(parentSpace)parentSpace.hidden=true; applyProfile(activeProfile()); }
   function renderParentProfiles() {
@@ -226,8 +239,8 @@
   }
 
   switchProfile?.addEventListener('click',openGate);
-  document.getElementById('choose-parent-space')?.addEventListener('click',openParentLock);
-  document.getElementById('open-parent-space')?.addEventListener('click',openParentLock);
+  document.getElementById('choose-parent-space')?.addEventListener('click',()=>openParentLock('gate'));
+  document.getElementById('open-parent-space')?.addEventListener('click',()=>openParentLock('child'));
   document.getElementById('close-parent-lock')?.addEventListener('click',closeParentLock);
   document.getElementById('close-parent-space')?.addEventListener('click',closeParentSpace);
   document.getElementById('add-child-profile')?.addEventListener('click',addChildProfile);
