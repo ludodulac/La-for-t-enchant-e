@@ -100,6 +100,7 @@ body.child-experience .profile-choice span{color:rgba(255,255,255,.78)}
 .parent-primary{background:var(--forest-yellow)!important;color:#171a34!important}
 .parent-danger{background:#563d50!important;color:#ffc5c1!important}
 .parent-lock{background:rgba(9,10,27,.72)!important}.parent-lock-card{background:#252a49!important;color:#fff!important}.parent-lock-card h2{color:#fff!important}.parent-lock-card p{color:#aeb4c8!important}.parent-lock-card input{background:#303654!important;border-color:rgba(255,255,255,.08)!important;color:#fff!important}.parent-lock-icon{background:#3a3154!important}
+.parent-lock-card form button{background:var(--forest-yellow)!important;color:#171a34!important;border-color:var(--forest-yellow)!important;font-weight:900!important}
 
 /* Listening page */
 body.child-audio-experience{background:#171a34;color:#fff}
@@ -113,6 +114,13 @@ body.child-audio-experience .full-player{background:#252a49;border:1px solid rgb
 body.child-audio-experience .full-transport .play{background:var(--forest-yellow);color:#171a34;box-shadow:0 12px 28px rgba(0,0,0,.24)}
 body.child-audio-experience .full-transport button:not(.play){background:#303654;color:#fff;border-color:rgba(255,255,255,.06)}
 body.child-audio-experience .full-tools{color:#aeb4c8}
+
+/* Utility views must never inherit the former light-theme ink colors. */
+body.child-experience .empty-state{border-color:rgba(255,255,255,.08);background:rgba(37,42,73,.35)}
+body.child-experience .empty-state strong,body.child-experience .media-title,body.child-experience .row-title{color:#fff!important}
+body.child-experience .empty-state span,body.child-experience .media-sub,body.child-experience .row-sub,body.child-experience .row-duration{color:#aeb4c8!important}
+body.child-experience .media-row{border-color:rgba(255,255,255,.06)}
+body.child-experience .row-play{background:#fff;color:#171a34;border-color:rgba(255,255,255,.14)}
 
 @media(max-width:800px){
  body.child-experience .main-surface{padding:14px 16px 128px}
