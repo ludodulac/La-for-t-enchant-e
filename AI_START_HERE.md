@@ -4,7 +4,7 @@ Ce fichier est un routeur, pas une seconde documentation.
 
 ## Contexte transversal
 
-La Forêt appartient à l'écosystème **`ludodulac/Grand-p-re-`**. Le slug GitHub de Grand Père utilise des tirets à la place des caractères accentués. En nouvelle conversation : lire Grand Père `AI_START_HERE.md`, la fiche La Forêt via `projects/_INDEX.md` et `LOOP_ENGINEERING.md`, puis revenir ici. **La Forêt reste l'autorité sur code, Supabase, médias, sécurité et production.**
+La Forêt appartient à l'écosystème **`ludodulac/Grand-pere`**. Grand Père est documenté dans le dépôt `ludodulac/Grand-pere`. En nouvelle conversation : lire Grand Père `AI_START_HERE.md`, la fiche La Forêt via `projects/_INDEX.md` et `LOOP_ENGINEERING.md`, puis revenir ici. **La Forêt reste l'autorité sur code, Supabase, médias, sécurité et production.**
 
 ## Commencer par l'état réel
 
