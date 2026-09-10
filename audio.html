@@ -3,25 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#09100d">
+  <meta name="theme-color" content="#171a34">
   <title>Écouter — La Forêt Enchantée</title>
   <meta name="description" content="Écouter une histoire dans La Forêt Enchantée.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;750&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;750&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app-2026.css">
   <link rel="stylesheet" href="css/audio-listening.css">
+  <link rel="stylesheet" href="css/child-controls.css">
+  <link rel="stylesheet" href="css/visual-polish.css">
 </head>
-<body class="media-app">
+<body class="media-app child-audio-experience">
   <main class="audio-detail-shell" id="player-container">
     <header class="detail-topbar">
-      <button class="detail-back" id="back-button" type="button">← Bibliothèque</button>
+      <button class="detail-back" id="back-button" type="button" aria-label="Retour à la bibliothèque">←</button>
       <a class="detail-brand" href="index.html">La Forêt Enchantée</a>
-      <span aria-hidden="true"></span>
+      <span class="detail-spacer" aria-hidden="true"></span>
     </header>
-
     <section class="detail-grid" aria-live="polite">
-      <div class="detail-art" id="detail-art"><div class="cover-placeholder">⌁</div></div>
+      <div class="detail-art" id="detail-art"><div class="cover-placeholder">🌿</div></div>
       <div class="detail-copy">
         <div class="detail-eyebrow" id="audio-cat">Chargement</div>
         <h1 id="audio-title">Une histoire de la forêt</h1>
@@ -30,9 +31,9 @@
       </div>
     </section>
   </main>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase.js"></script>
   <script src="js/audio.js"></script>
+  <script src="js/child-controls.js"></script>
 </body>
 </html>
