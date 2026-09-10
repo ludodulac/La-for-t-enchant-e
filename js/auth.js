@@ -60,6 +60,11 @@ if (isAdminPage) {
   coverCss.href = 'css/admin-covers.css';
   document.head.appendChild(coverCss);
 
+  const storyFlowCss = document.createElement('link');
+  storyFlowCss.rel = 'stylesheet';
+  storyFlowCss.href = 'css/admin-story-flow.css';
+  document.head.appendChild(storyFlowCss);
+
   document.addEventListener('DOMContentLoaded', async () => {
     const session = await window.adminSessionPromise;
     if (!session) return;
@@ -84,6 +89,7 @@ if (isAdminPage) {
     try {
       await loadAdminScript('js/cover-composer.js');
       await loadAdminScript('js/admin-cover-editor.js');
+      await loadAdminScript('js/admin-story-flow.js');
       await loadAdminScript('js/admin-blog-safety.js');
       await loadAdminScript('js/admin-ux.js');
       document.documentElement.classList.remove('admin-auth-pending');
