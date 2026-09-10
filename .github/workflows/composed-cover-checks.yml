@@ -21,7 +21,9 @@ jobs:
           set -euo pipefail
           test -f js/cover-composer.js
           test -f js/admin-cover-editor.js
+          test -f js/admin-story-flow.js
           test -f css/admin-covers.css
+          test -f css/admin-story-flow.css
           test -f assets/illustrations/grimm/manifest.json
           test -f supabase/migrations/20260910_add_composed_cover_metadata.sql
           for file in renard grenouille sorciere miroir arbre oiseau couronne lune; do
@@ -33,6 +35,7 @@ jobs:
           set -euo pipefail
           node --check js/cover-composer.js
           node --check js/admin-cover-editor.js
+          node --check js/admin-story-flow.js
       - name: Check manifest
         shell: bash
         run: |
@@ -44,11 +47,15 @@ jobs:
           set -euo pipefail
           grep -q "js/cover-composer.js" js/auth.js
           grep -q "js/admin-cover-editor.js" js/auth.js
+          grep -q "js/admin-story-flow.js" js/auth.js
           grep -q "css/admin-covers.css" js/auth.js
+          grep -q "css/admin-story-flow.css" js/auth.js
           grep -q "illustration_key" js/admin-cover-editor.js
           grep -q "cover_color" js/admin-cover-editor.js
           grep -q "uploadVerified" js/admin-cover-editor.js
           grep -q "verifyRow" js/admin-cover-editor.js
+          grep -q "Choisir une histoire proposée" js/admin-story-flow.js
+          grep -q "Rechercher un dessin" js/admin-story-flow.js
           grep -q "illustration_key" supabase/migrations/20260910_add_composed_cover_metadata.sql
           grep -q "cover_color" supabase/migrations/20260910_add_composed_cover_metadata.sql
       - name: Ensure no embedded base64 architecture
