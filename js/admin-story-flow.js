@@ -68,15 +68,15 @@
     const search = document.createElement('input');
     search.type = 'search';
     search.className = 'cover-gallery-search';
-    search.placeholder = 'Rechercher un dessin…';
-    search.setAttribute('aria-label', 'Rechercher une illustration');
+    search.placeholder = 'Rechercher une image…';
+    search.setAttribute('aria-label', 'Rechercher une image de couverture');
     search.dataset.illustrationSearch = 'true';
     gallery.before(search);
 
     const empty = document.createElement('div');
     empty.className = 'cover-gallery-empty';
     empty.hidden = true;
-    empty.textContent = 'Aucun dessin ne correspond à cette recherche.';
+    empty.textContent = 'Aucune image ne correspond à cette recherche.';
     gallery.after(empty);
 
     const filter = () => {
