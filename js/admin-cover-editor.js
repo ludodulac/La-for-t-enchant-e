@@ -29,7 +29,6 @@
       titleInput,
       current: null,
       initialMode: 'upload',
-      initialTitle: '',
       initialKey: null,
       initialColor: null,
       renderToken: 0,
@@ -58,7 +57,6 @@
           <canvas class="cover-preview" width="600" height="600" aria-label="Aperçu de la couverture"></canvas>
           <div class="cover-preview-note">Aperçu de la vignette finale</div>
         </div>
-        <div class="cover-title-sync" hidden>Le nouveau titre régénérera automatiquement cette couverture.</div>
       </div>`;
 
     fileInput.closest('.form-group')?.appendChild(root);
@@ -68,7 +66,6 @@
     state.swatches = root.querySelector('.cover-swatches');
     state.customColor = root.querySelector('.cover-custom-color input');
     state.canvas = root.querySelector('.cover-preview');
-    state.titleSync = root.querySelector('.cover-title-sync');
     states.set(kind, state);
 
     root.querySelectorAll('[data-cover-mode]').forEach(button => {
@@ -78,10 +75,6 @@
       state.color = safeColor(state.customColor.value);
       syncColorSelection(state);
       renderPreview(state);
-    });
-    titleInput.addEventListener('input', () => {
-      if (state.mode === 'composed') renderPreview(state);
-      updateTitleSync(state);
     });
 
     renderGallery(state);
@@ -101,7 +94,6 @@
     const hint = state.fileInput.parentElement?.querySelector('.upload-hint,.keep-file-hint');
     if (hint) hint.hidden = state.mode === 'composed';
     if (state.mode === 'composed') renderPreview(state);
-    updateTitleSync(state);
   }
 
   function renderGallery(state) {
@@ -157,10 +149,8 @@
     if (!asset) return;
     const token = ++state.renderToken;
     try {
-      if (document.fonts?.ready) await document.fonts.ready;
       await window.ForestCoverComposer.render({
         canvas: state.canvas,
-        title: state.titleInput.value.trim() || 'Ton histoire',
         illustrationUrl: BANK_BASE + asset.file,
         color: state.color,
         framing: asset,
@@ -171,19 +161,12 @@
     }
   }
 
-  function updateTitleSync(state) {
-    if (!state.titleSync) return;
-    const changedTitle = state.kind === 'edit' && state.mode === 'composed' && state.current && state.titleInput.value.trim() !== state.initialTitle;
-    state.titleSync.hidden = !changedTitle;
-  }
-
-  async function composedFile(state, title) {
+  async function composedFile(state) {
     const asset = selectedAsset(state);
     if (!asset) throw new Error('Choisis une illustration.');
     state.color = safeColor(state.color);
     await window.ForestCoverComposer.render({
       canvas: state.canvas,
-      title,
       illustrationUrl: BANK_BASE + asset.file,
       color: state.color,
       framing: asset,
@@ -192,20 +175,20 @@
     return new File([blob], 'couverture-composee.png', { type: 'image/png' });
   }
 
-  async function resolveAdd(title) {
+  async function resolveAdd() {
     const state = states.get('add');
     if (!state || state.mode === 'upload') {
       return { file: state?.fileInput.files[0] || null, illustrationKey: null, coverColor: null, generated: false };
     }
     return {
-      file: await composedFile(state, title),
+      file: await composedFile(state),
       illustrationKey: selectedAsset(state).id,
       coverColor: safeColor(state.color),
       generated: true,
     };
   }
 
-  async function resolveEdit(title) {
+  async function resolveEdit() {
     const state = states.get('edit');
     if (!state || !state.current) return { file: null, illustrationKey: null, coverColor: null, generated: false, replace: false };
     const importedFile = state.fileInput.files[0] || null;
@@ -227,12 +210,11 @@
     if (!asset) throw new Error('Choisis une illustration.');
     const color = safeColor(state.color);
     const mustRegenerate = state.initialMode !== 'composed'
-      || title !== state.initialTitle
       || asset.id !== state.initialKey
       || color !== safeColor(state.initialColor);
 
     return {
-      file: mustRegenerate ? await composedFile(state, title) : null,
+      file: mustRegenerate ? await composedFile(state) : null,
       illustrationKey: asset.id,
       coverColor: color,
       generated: mustRegenerate,
@@ -244,7 +226,6 @@
     const state = states.get('edit');
     if (!state || !audio) return;
     state.current = audio;
-    state.initialTitle = audio.title || '';
     state.initialKey = audio.illustration_key || null;
     state.initialColor = audio.cover_color || null;
     state.initialMode = state.initialKey && state.initialColor ? 'composed' : 'upload';
@@ -257,14 +238,12 @@
       syncColorSelection(state);
     }
     setMode(state, state.initialMode);
-    updateTitleSync(state);
   }
 
   function reset(kind) {
     const state = states.get(kind);
     if (!state) return;
     state.current = null;
-    state.initialTitle = '';
     state.initialKey = null;
     state.initialColor = null;
     state.initialMode = 'upload';
@@ -316,7 +295,7 @@
       const audFile = document.getElementById('audio-file').files[0];
       if (!title || !audFile) throw new Error('Titre et fichier audio requis.');
 
-      const cover = await resolveAdd(title);
+      const cover = await resolveAdd();
       let imagePath = null;
       if (cover.file) {
         imagePath = makeStoragePath(title, cover.file.name);
@@ -385,7 +364,7 @@
     let audioPath = audio.audio_path;
 
     try {
-      const cover = await resolveEdit(title);
+      const cover = await resolveEdit();
       if (cover.file) {
         imagePath = makeStoragePath(title, cover.file.name);
         await uploadVerified('images', imagePath, cover.file);

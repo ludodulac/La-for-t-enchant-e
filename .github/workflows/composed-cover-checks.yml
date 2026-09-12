@@ -41,6 +41,20 @@ jobs:
         run: |
           set -euo pipefail
           node -e 'const fs=require("fs");const p="assets/illustrations/grimm/manifest.json";const x=JSON.parse(fs.readFileSync(p,"utf8"));if(!Array.isArray(x)||x.length<8)process.exit(1);for(const a of x){if(!a.id||!a.label||!a.file)process.exit(1);if(!fs.existsSync("assets/illustrations/grimm/"+a.file))process.exit(1)}'
+      - name: Check graphic-only cover contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "ARTWORK_BOX = 440" js/cover-composer.js
+          grep -q "drawY = (SIZE - drawH) / 2" js/cover-composer.js
+          if grep -q "fillText" js/cover-composer.js; then
+            echo 'Cover composer must not draw story titles or other text.'
+            exit 1
+          fi
+          if grep -q "title !== state.initialTitle" js/admin-cover-editor.js; then
+            echo 'Title-only edits must not regenerate composed covers.'
+            exit 1
+          fi
       - name: Check admin integration contracts
         shell: bash
         run: |
