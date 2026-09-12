@@ -20,6 +20,8 @@
   ];
 
   let illustrationConcepts = {};
+  let illustrationBaseUrl = '';
+  const nativeFetch = window.fetch.bind(window);
 
   function normalizeSearch(value) {
     return String(value || '')
@@ -35,14 +37,38 @@
     return String(key || '').split('--')[0] || '';
   }
 
+  function remoteAssetUrl(file) {
+    return illustrationBaseUrl && file ? illustrationBaseUrl + encodeURIComponent(file) : '';
+  }
+
+  function installLibraryFetchRedirect() {
+    if (window.fetch.__adminLibraryRedirect) return;
+    const redirectedFetch = function(input, init) {
+      if (illustrationBaseUrl) {
+        const raw = typeof input === 'string' ? input : input?.url;
+        const match = String(raw || '').match(/(?:^|\/)assets\/covers\/([^/?#]+\.webp)(?:[?#].*)?$/i);
+        if (match) {
+          const remote = remoteAssetUrl(decodeURIComponent(match[1]));
+          if (typeof input === 'string') return nativeFetch(remote, init);
+          return nativeFetch(new Request(remote, input), init);
+        }
+      }
+      return nativeFetch(input, init);
+    };
+    redirectedFetch.__adminLibraryRedirect = true;
+    window.fetch = redirectedFetch;
+  }
+
   async function loadIllustrationKeywords() {
     try {
-      const response = await fetch('assets/covers/keywords.json', { cache: 'no-cache' });
+      const response = await nativeFetch('assets/covers/keywords.json', { cache: 'no-cache' });
       if (!response.ok) return;
       const payload = await response.json();
       illustrationConcepts = payload?.concepts && typeof payload.concepts === 'object'
         ? payload.concepts
         : {};
+      illustrationBaseUrl = typeof payload?.baseUrl === 'string' ? payload.baseUrl : '';
+      installLibraryFetchRedirect();
       enhanceCoverEditors();
     } catch (error) {
       console.warn('Mots-clés des illustrations indisponibles.', error);
@@ -103,6 +129,28 @@
     return normalizeSearch(terms.join(' '));
   }
 
+  function rewriteIllustrationAssets(editor) {
+    if (!illustrationBaseUrl || !editor) return;
+    editor.querySelectorAll('.cover-illustration').forEach(button => {
+      const image = button.querySelector('img');
+      if (!image) return;
+      if (!button.dataset.libraryFile) {
+        const raw = image.getAttribute('src') || '';
+        button.dataset.libraryFile = raw.split('/').pop()?.split(/[?#]/)[0] || '';
+      }
+      const remote = remoteAssetUrl(button.dataset.libraryFile);
+      if (remote && image.src !== remote) image.src = remote;
+    });
+
+    const preview = editor.querySelector('.cover-preview-image');
+    const selected = editor.querySelector('.cover-illustration.selected');
+    const file = selected?.dataset.libraryFile;
+    if (preview && file) {
+      const remote = remoteAssetUrl(file);
+      if (remote && preview.src !== remote) preview.src = remote;
+    }
+  }
+
   function enhanceIllustrationSearch(editor) {
     if (!editor) return;
     const gallery = editor.querySelector('.cover-gallery');
@@ -111,6 +159,7 @@
     gallery.querySelectorAll('.cover-illustration').forEach(button => {
       button.dataset.search = searchableText(button);
     });
+    rewriteIllustrationAssets(editor);
 
     let search = editor.querySelector('[data-illustration-search]');
     if (!search) {
@@ -153,8 +202,14 @@
         setTimeout(() => {
           search.value = '';
           filter();
+          rewriteIllustrationAssets(editor);
         }, 0);
       });
+    }
+
+    if (!editor.dataset.libraryAssetRewriteBound) {
+      editor.dataset.libraryAssetRewriteBound = 'true';
+      editor.addEventListener('click', () => setTimeout(() => rewriteIllustrationAssets(editor), 0), true);
     }
     filter();
   }
