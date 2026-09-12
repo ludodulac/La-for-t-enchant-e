@@ -24,6 +24,7 @@ jobs:
           test -f css/admin-covers.css
           test -f css/admin-story-flow.css
           test -f assets/covers/manifest.json
+          test -f assets/covers/keywords.json
           test -f supabase/migrations/20260910_add_composed_cover_metadata.sql
       - name: Check JavaScript syntax
         shell: bash
@@ -31,16 +32,36 @@ jobs:
           set -euo pipefail
           node --check js/admin-cover-editor.js
           node --check js/admin-story-flow.js
-      - name: Check final image manifest
+      - name: Check semantic image catalog
         shell: bash
         run: |
           set -euo pipefail
-          node -e 'const fs=require("fs");const path=require("path");const p="assets/covers/manifest.json";const x=JSON.parse(fs.readFileSync(p,"utf8"));if(!Array.isArray(x))process.exit(1);for(const a of x){if(!a.id||!a.label||!a.file)process.exit(1);const full=path.join("assets/covers",a.file);if(!fs.existsSync(full))process.exit(1)}'
-      - name: Check direct image cover contracts
+          node <<'NODE'
+          const fs = require('fs');
+          const items = JSON.parse(fs.readFileSync('assets/covers/manifest.json', 'utf8'));
+          const index = JSON.parse(fs.readFileSync('assets/covers/keywords.json', 'utf8'));
+          if (!Array.isArray(items) || items.length !== 252) throw new Error('252 illustrations attendues.');
+          if (!index || typeof index.baseUrl !== 'string' || !/^https:\/\//.test(index.baseUrl)) throw new Error('baseUrl publique requise.');
+          if (!index.concepts || typeof index.concepts !== 'object') throw new Error('Index sémantique manquant.');
+          const ids = new Set();
+          for (const item of items) {
+            if (!item.id || !item.label || !/^s[1-5]_r\d+_c\d+\.webp$/.test(item.file || '')) throw new Error('Entrée de catalogue invalide.');
+            if (ids.has(item.id)) throw new Error('Identifiant dupliqué: ' + item.id);
+            ids.add(item.id);
+            const concept = item.id.split('--')[0];
+            const meta = index.concepts[concept];
+            if (!meta || !meta.label || !Array.isArray(meta.keywords) || meta.keywords.length < 2) throw new Error('Mots-clés manquants pour ' + concept);
+          }
+          NODE
+      - name: Check semantic search contracts
         shell: bash
         run: |
           set -euo pipefail
           grep -q "assets/covers/manifest.json" js/admin-cover-editor.js
+          grep -q "assets/covers/keywords.json" js/admin-story-flow.js
+          grep -q "normalize('NFD')" js/admin-story-flow.js
+          grep -q "data.search\|dataset.search" js/admin-story-flow.js
+          grep -q "illustrationBaseUrl" js/admin-story-flow.js
           grep -q "Choisir une image prête" js/admin-cover-editor.js
           grep -q "cover_color: null" js/admin-cover-editor.js
           grep -q "assetFile" js/admin-cover-editor.js
