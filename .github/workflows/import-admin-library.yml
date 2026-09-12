@@ -1,0 +1,39 @@
+name: Import admin illustration library
+
+on:
+  push:
+    branches:
+      - simplify-final-cover-images
+
+permissions:
+  contents: write
+
+jobs:
+  import-library:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: simplify-final-cover-images
+      - name: Find and extract uploaded ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="$(find . -maxdepth 4 -type f -name 'admin-library-crops.zip' -print -quit)"
+          if [ -z "$ZIP" ]; then
+            echo 'No admin-library-crops.zip in this push; nothing to import.'
+            exit 0
+          fi
+          rm -rf assets/illustrations/admin-library
+          mkdir -p assets/illustrations/admin-library
+          unzip -j "$ZIP" '*.webp' -d assets/illustrations/admin-library
+          COUNT="$(find assets/illustrations/admin-library -maxdepth 1 -type f -name '*.webp' | wc -l | tr -d ' ')"
+          test "$COUNT" = "252"
+          rm -f "$ZIP"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/illustrations/admin-library "$ZIP" || true
+          git commit -m 'assets: import 252 admin library illustrations'
+          git push origin HEAD:simplify-final-cover-images
